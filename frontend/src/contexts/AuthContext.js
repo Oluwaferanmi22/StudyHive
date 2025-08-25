@@ -1,4 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { authAPI, handleAPIError } from '../services/apiService';
+import socketService from '../services/socketService';
 
 const AuthContext = createContext();
 
@@ -13,70 +15,93 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Check for existing auth token on app load
   useEffect(() => {
-    const token = localStorage.getItem('studyhive_token');
-    const userData = localStorage.getItem('studyhive_user');
-    
-    if (token && userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        localStorage.removeItem('studyhive_token');
-        localStorage.removeItem('studyhive_user');
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('studyhive_token');
+      
+      if (token) {
+        try {
+          // Verify token by getting user profile
+          const response = await authAPI.getProfile();
+          if (response.success) {
+            setUser(response.user);
+            localStorage.setItem('studyhive_user', JSON.stringify(response.user));
+            
+            // Connect to socket
+            socketService.connect(token);
+          } else {
+            // Invalid token
+            localStorage.removeItem('studyhive_token');
+            localStorage.removeItem('studyhive_user');
+          }
+        } catch (error) {
+          console.error('Error verifying token:', error);
+          localStorage.removeItem('studyhive_token');
+          localStorage.removeItem('studyhive_user');
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (loginData, password) => {
     try {
-      // This would typically be an API call
-      // For now, we'll simulate a successful login
-      const mockUser = {
-        id: '1',
-        email: email,
-        name: 'Demo User',
-        reputation: 150,
-        badge: 'Contributor',
-        joinedGroups: 3
-      };
-
-      const mockToken = 'mock_jwt_token_' + Date.now();
+      setError(null);
+      setIsLoading(true);
       
-      localStorage.setItem('studyhive_token', mockToken);
-      localStorage.setItem('studyhive_user', JSON.stringify(mockUser));
-      setUser(mockUser);
+      const response = await authAPI.login(loginData, password);
       
-      return { success: true };
+      if (response.success) {
+        setUser(response.user);
+        localStorage.setItem('studyhive_token', response.token);
+        localStorage.setItem('studyhive_user', JSON.stringify(response.user));
+        
+        // Connect to socket
+        socketService.connect(response.token);
+        
+        return { success: true, user: response.user };
+      } else {
+        return { success: false, message: response.message };
+      }
     } catch (error) {
-      return { success: false, error: 'Login failed' };
+      const errorResult = handleAPIError(error);
+      setError(errorResult.message);
+      return errorResult;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const register = async (userData) => {
     try {
-      // This would typically be an API call
-      const newUser = {
-        id: Date.now().toString(),
-        email: userData.email,
-        name: userData.name,
-        reputation: 0,
-        badge: 'Newcomer',
-        joinedGroups: 0
-      };
-
-      const mockToken = 'mock_jwt_token_' + Date.now();
+      setError(null);
+      setIsLoading(true);
       
-      localStorage.setItem('studyhive_token', mockToken);
-      localStorage.setItem('studyhive_user', JSON.stringify(newUser));
-      setUser(newUser);
+      const response = await authAPI.register(userData);
       
-      return { success: true };
+      if (response.success) {
+        setUser(response.user);
+        localStorage.setItem('studyhive_token', response.token);
+        localStorage.setItem('studyhive_user', JSON.stringify(response.user));
+        
+        // Connect to socket
+        socketService.connect(response.token);
+        
+        return { success: true, user: response.user };
+      } else {
+        return { success: false, message: response.message };
+      }
     } catch (error) {
-      return { success: false, error: 'Registration failed' };
+      const errorResult = handleAPIError(error);
+      setError(errorResult.message);
+      return errorResult;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -84,6 +109,45 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('studyhive_token');
     localStorage.removeItem('studyhive_user');
     setUser(null);
+    setError(null);
+    
+    // Disconnect socket
+    socketService.disconnect();
+  };
+
+  const updateProfile = async (profileData) => {
+    try {
+      setError(null);
+      const response = await authAPI.updateProfile(profileData);
+      
+      if (response.success) {
+        setUser(response.user);
+        localStorage.setItem('studyhive_user', JSON.stringify(response.user));
+        return { success: true, user: response.user };
+      } else {
+        return { success: false, message: response.message };
+      }
+    } catch (error) {
+      const errorResult = handleAPIError(error);
+      setError(errorResult.message);
+      return errorResult;
+    }
+  };
+
+  const refreshProfile = async () => {
+    try {
+      const response = await authAPI.getProfile();
+      if (response.success) {
+        setUser(response.user);
+        localStorage.setItem('studyhive_user', JSON.stringify(response.user));
+      }
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+  };
+
+  const clearError = () => {
+    setError(null);
   };
 
   const value = {
@@ -91,7 +155,11 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    updateProfile,
+    refreshProfile,
     isLoading,
+    error,
+    clearError,
     isAuthenticated: !!user
   };
 
