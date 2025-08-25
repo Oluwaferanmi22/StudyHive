@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import socketService from '../../services/socketService';
 import { useAuth } from '../../contexts/AuthContext';
+import { ConnectionLoader } from './Loaders';
 
 const ConnectionStatus = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -17,6 +19,7 @@ const ConnectionStatus = () => {
     const handleConnectionStatus = (data) => {
       setIsConnected(data.connected);
       setShowStatus(!data.connected);
+      setIsReconnecting(false);
       
       // Hide success status after 3 seconds
       if (data.connected) {
@@ -73,17 +76,29 @@ const ConnectionStatus = () => {
           </div>
           
           {!isConnected && (
-            <button
-              onClick={() => {
-                const token = localStorage.getItem('studyhive_token');
-                if (token) {
-                  socketService.reconnect(token);
-                }
-              }}
-              className="px-3 py-1 text-sm bg-red-200 hover:bg-red-300 rounded-md transition-colors"
-            >
-              Reconnect
-            </button>
+            isReconnecting ? (
+              <ConnectionLoader message="Reconnecting..." size="sm" />
+            ) : (
+              <button
+                onClick={async () => {
+                  setIsReconnecting(true);
+                  const token = localStorage.getItem('studyhive_token');
+                  if (token) {
+                    try {
+                      await socketService.reconnect(token);
+                    } catch (error) {
+                      console.error('Reconnection failed:', error);
+                      setIsReconnecting(false);
+                    }
+                  } else {
+                    setIsReconnecting(false);
+                  }
+                }}
+                className="px-3 py-1 text-sm bg-red-200 hover:bg-red-300 rounded-md transition-colors"
+              >
+                Reconnect
+              </button>
+            )
           )}
         </div>
         

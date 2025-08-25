@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authAPI, handleAPIError } from '../services/apiService';
 import socketService from '../services/socketService';
+import { FullPageLoader } from '../components/Common/Loaders';
 
 const AuthContext = createContext();
 
@@ -162,6 +163,18 @@ export const AuthProvider = ({ children }) => {
     clearError,
     isAuthenticated: !!user
   };
+
+  // Show full page loader during initial auth check
+  if (isLoading && !user && !error) {
+    return (
+      <>
+        <FullPageLoader message="Initializing StudyHive..." />
+        <AuthContext.Provider value={value}>
+          {children}
+        </AuthContext.Provider>
+      </>
+    );
+  }
 
   return (
     <AuthContext.Provider value={value}>

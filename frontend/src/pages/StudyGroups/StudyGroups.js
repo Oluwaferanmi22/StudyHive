@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AIMatchingQuiz from '../../components/StudyGroups/AIMatchingQuiz';
+import { CardSkeleton, ButtonLoader, InlineLoader } from '../../components/Common/Loaders';
 
 const StudyGroups = () => {
   const [activeTab, setActiveTab] = useState('browse');
   const [searchQuery, setSearchQuery] = useState('');
   const [aiRecommendations, setAiRecommendations] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [groups, setGroups] = useState([]);
+  const [isJoining, setIsJoining] = useState({});
+  const [isCreating, setIsCreating] = useState(false);
 
   // Mock data for study groups
   const studyGroups = [
@@ -81,7 +86,22 @@ const StudyGroups = () => {
     }
   ];
 
-  const filteredGroups = studyGroups.filter(group =>
+  useEffect(() => {
+    // Simulate loading groups from API
+    const loadGroups = async () => {
+      setIsLoading(true);
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setGroups(studyGroups);
+      setIsLoading(false);
+    };
+
+    loadGroups();
+  }, []);
+
+  const filteredGroups = groups.filter(group =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     group.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
     group.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -275,12 +295,24 @@ const StudyGroups = () => {
 
             {/* Groups Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filteredGroups.map((group) => (
-                <GroupCard key={group.id} group={group} />
-              ))}
+              {isLoading ? (
+                // Show loading skeletons while groups are loading
+                <>                  
+                  <CardSkeleton />
+                  <CardSkeleton />
+                  <CardSkeleton />
+                  <CardSkeleton />
+                  <CardSkeleton />
+                  <CardSkeleton />
+                </>
+              ) : (
+                filteredGroups.map((group) => (
+                  <GroupCard key={group.id} group={group} />
+                ))
+              )}
             </div>
 
-            {filteredGroups.length === 0 && (
+            {!isLoading && filteredGroups.length === 0 && (
               <div className="text-center py-12">
                 <div className="text-4xl mb-4">🔍</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No groups found</h3>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import io from 'socket.io-client';
+import socketService from '../../services/socketService';
+import { MessageSkeleton, TypingIndicator, InlineLoader } from '../Common/Loaders';
 
 const StudyGroupChat = ({ groupId, groupName }) => {
   const { user } = useAuth();
@@ -8,8 +9,12 @@ const StudyGroupChat = ({ groupId, groupName }) => {
   const [newMessage, setNewMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const [typingUsers, setTypingUsers] = useState([]);
   const messagesEndRef = useRef(null);
   const socketRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   // Mock messages for demo (in real app, this would come from Socket.IO)
   const mockMessages = [
@@ -44,32 +49,47 @@ const StudyGroupChat = ({ groupId, groupName }) => {
   ];
 
   useEffect(() => {
-    // Initialize with mock messages
-    setMessages(mockMessages);
+    // Simulate loading messages
+    const loadMessages = async () => {
+      setIsLoading(true);
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Initialize with mock messages
+      setMessages(mockMessages);
+      
+      // Mock connection status
+      setIsConnected(true);
+      setOnlineUsers([
+        { id: '2', name: 'Sarah Johnson' },
+        { id: '3', name: 'Mike Chen' },
+        { id: '4', name: 'Alex Rivera' }
+      ]);
+      
+      setIsLoading(false);
+    };
+
+    loadMessages();
 
     // In a real app, you would connect to Socket.IO server here:
-    // socketRef.current = io('http://localhost:5000');
-    // 
+    // socketRef.current = socketService.getSocket();
     // socketRef.current.emit('join-group', { groupId, user });
-    // 
     // socketRef.current.on('connect', () => setIsConnected(true));
     // socketRef.current.on('disconnect', () => setIsConnected(false));
     // socketRef.current.on('new-message', handleNewMessage);
     // socketRef.current.on('user-joined', handleUserJoined);
     // socketRef.current.on('user-left', handleUserLeft);
     // socketRef.current.on('online-users', setOnlineUsers);
-
-    // Mock connection status
-    setIsConnected(true);
-    setOnlineUsers([
-      { id: '2', name: 'Sarah Johnson' },
-      { id: '3', name: 'Mike Chen' },
-      { id: '4', name: 'Alex Rivera' }
-    ]);
+    // socketRef.current.on('typing', handleTyping);
+    // socketRef.current.on('stop-typing', handleStopTyping);
 
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
+      }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
       }
     };
   }, [groupId]);
@@ -82,22 +102,49 @@ const StudyGroupChat = ({ groupId, groupName }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || isSending) return;
+
+    setIsSending(true);
+    const messageText = newMessage;
+    setNewMessage('');
 
     const message = {
       id: Date.now(),
       user: user,
-      message: newMessage,
+      message: messageText,
       timestamp: new Date(),
       type: 'message'
     };
 
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     // In real app: socketRef.current.emit('send-message', message);
     // For demo, add to local state
     setMessages(prev => [...prev, message]);
-    setNewMessage('');
+    setIsSending(false);
+  };
+
+  const handleInputChange = (e) => {
+    setNewMessage(e.target.value);
+    
+    // In real app, emit typing event
+    // if (socketRef.current) {
+    //   socketRef.current.emit('typing', { groupId, user: user.name });
+    // }
+    
+    // Clear previous timeout and set new one to stop typing
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    typingTimeoutRef.current = setTimeout(() => {
+      // if (socketRef.current) {
+      //   socketRef.current.emit('stop-typing', { groupId, user: user.name });
+      // }
+    }, 1000);
   };
 
   const formatTime = (timestamp) => {
@@ -170,9 +217,24 @@ const StudyGroupChat = ({ groupId, groupName }) => {
 
       {/* Messages Area */}
       <div className="flex-1 p-4 overflow-y-auto max-h-96">
-        {messages.map((message) => (
-          <MessageItem key={message.id} message={message} />
-        ))}
+        {isLoading ? (
+          // Show loading skeletons while messages are loading
+          <>            
+            <MessageSkeleton />
+            <MessageSkeleton align="right" />
+            <MessageSkeleton />
+            <MessageSkeleton align="right" />
+          </>
+        ) : (
+          <>
+            {messages.map((message) => (
+              <MessageItem key={message.id} message={message} />
+            ))}
+            {typingUsers.length > 0 && (
+              <TypingIndicator users={typingUsers} />
+            )}
+          </>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -182,19 +244,23 @@ const StudyGroupChat = ({ groupId, groupName }) => {
           <input
             type="text"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChange}
             placeholder="Type your message..."
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            disabled={!isConnected}
+            disabled={!isConnected || isSending}
           />
           <button
             type="submit"
-            disabled={!newMessage.trim() || !isConnected}
-            className="px-4 py-2 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-lg hover:from-primary-600 hover:to-secondary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={!newMessage.trim() || !isConnected || isSending}
+            className="px-4 py-2 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-lg hover:from-primary-600 hover:to-secondary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
           >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-            </svg>
+            {isSending ? (
+              <InlineLoader size="sm" />
+            ) : (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+              </svg>
+            )}
           </button>
         </div>
       </form>
