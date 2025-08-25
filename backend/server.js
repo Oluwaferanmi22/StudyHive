@@ -3,7 +3,10 @@ const http = require('http');
 const socketIO = require('socket.io');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
+const fs = require('fs');
 const connectDB = require('./config/database');
+const socketService = require('./services/socketService');
 
 // Load environment variables
 dotenv.config();
@@ -16,9 +19,14 @@ const server = http.createServer(app);
 const io = socketIO(server, {
   cors: {
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
 });
+
+// Initialize Socket.IO service
+socketService.initialize(io);
 
 // Middleware
 app.use(cors({
@@ -27,6 +35,15 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Create upload directories if they don't exist
+const uploadDirs = ['uploads', 'uploads/messages', 'uploads/avatars', 'uploads/resources'];
+uploadDirs.forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`📁 Created upload directory: ${dir}`);
+  }
+});
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
@@ -39,43 +56,9 @@ app.use('/api/resources', require('./routes/resources'));
 app.use('/api/questions', require('./routes/questions'));
 app.use('/api/messages', require('./routes/messages'));
 
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  // Join a study hive room
-  socket.on('join-hive', (hiveId) => {
-    socket.join(hiveId);
-    socket.to(hiveId).emit('user-joined', { userId: socket.userId });
-    console.log(`User ${socket.id} joined hive ${hiveId}`);
-  });
-
-  // Leave a study hive room
-  socket.on('leave-hive', (hiveId) => {
-    socket.leave(hiveId);
-    socket.to(hiveId).emit('user-left', { userId: socket.userId });
-    console.log(`User ${socket.id} left hive ${hiveId}`);
-  });
-
-  // Handle chat messages
-  socket.on('send-message', (data) => {
-    socket.to(data.hiveId).emit('new-message', data);
-  });
-
-  // Handle typing indicators
-  socket.on('typing-start', (data) => {
-    socket.to(data.hiveId).emit('user-typing', { userId: socket.userId });
-  });
-
-  socket.on('typing-stop', (data) => {
-    socket.to(data.hiveId).emit('user-stop-typing', { userId: socket.userId });
-  });
-
-  // Handle disconnect
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
-});
+// Make Socket.IO available globally for other modules
+app.set('io', io);
+app.set('socketService', socketService);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
