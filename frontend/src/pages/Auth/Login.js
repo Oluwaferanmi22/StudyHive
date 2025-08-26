@@ -29,7 +29,7 @@ const Login = () => {
       if (result.success) {
         navigate('/dashboard');
       } else {
-        setError(result.error || 'Login failed');
+        setError(result.message || 'Login failed');
       }
     } catch (err) {
       setError('An error occurred during login');
@@ -148,7 +148,7 @@ const Login = () => {
           {/* Demo credentials */}
           <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
             <p className="text-xs text-yellow-800 font-medium mb-2">Demo Credentials:</p>
-            <p className="text-xs text-yellow-700">Email: demo@studyhive.com</p>
+            <p className="text-xs text-yellow-700">Email: test@example.com</p>
             <p className="text-xs text-yellow-700">Password: password123</p>
           </div>
         </div>

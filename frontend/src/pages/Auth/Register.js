@@ -65,17 +65,24 @@ const Register = () => {
     setIsLoading(true);
 
     try {
+      // Split the name into first and last name
+      const nameParts = formData.name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || firstName; // Use firstName as fallback
+      
       const result = await register({
-        name: formData.name,
+        username: formData.email.split('@')[0], // Use email prefix as username
         email: formData.email,
         password: formData.password,
-        studyInterests: formData.studyInterests
+        firstName: firstName,
+        lastName: lastName,
+        studySubjects: formData.studyInterests ? [formData.studyInterests] : []
       });
 
       if (result.success) {
         navigate('/dashboard');
       } else {
-        setErrors({ general: result.error || 'Registration failed' });
+        setErrors({ general: result.message || 'Registration failed' });
       }
     } catch (err) {
       setErrors({ general: 'An error occurred during registration' });

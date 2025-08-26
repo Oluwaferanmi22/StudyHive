@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AIMatchingQuiz from '../../components/StudyGroups/AIMatchingQuiz';
 import { SkeletonCard, ButtonLoader, InlineLoader } from '../../components/Common/Loaders';
+import { useAuth } from '../../contexts/AuthContext';
+import { hivesAPI } from '../../services/apiService';
 
 const StudyGroups = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('browse');
   const [searchQuery, setSearchQuery] = useState('');
   const [aiRecommendations, setAiRecommendations] = useState(null);
@@ -11,6 +15,17 @@ const StudyGroups = () => {
   const [groups, setGroups] = useState([]);
   const [isJoining, setIsJoining] = useState({});
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+  
+  // Form state for creating hive
+  const [hiveForm, setHiveForm] = useState({
+    name: '',
+    subject: '',
+    description: '',
+    level: 'Beginner',
+    maxMembers: 15,
+    isPublic: true
+  });
 
   // Mock data for study groups
   const studyGroups = [
@@ -109,6 +124,84 @@ const StudyGroups = () => {
 
   const handleAIRecommendations = (recommendations) => {
     setAiRecommendations(recommendations);
+  };
+
+  // Handle form input changes
+  const handleFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setHiveForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  // Handle form submission
+  const handleCreateHive = async (e) => {
+    e.preventDefault();
+    
+    if (!user) {
+      setCreateError('You must be logged in to create a group');
+      return;
+    }
+
+    if (!hiveForm.name.trim()) {
+      setCreateError('Group name is required');
+      return;
+    }
+
+    if (!hiveForm.subject || hiveForm.subject === 'Select a subject') {
+      setCreateError('Please select a subject');
+      return;
+    }
+
+    if (!hiveForm.description.trim()) {
+      setCreateError('Description is required');
+      return;
+    }
+
+    setIsCreating(true);
+    setCreateError('');
+
+    try {
+      // Prepare hive data
+      const hiveData = {
+        name: hiveForm.name.trim(),
+        description: hiveForm.description.trim(),
+        subject: hiveForm.subject,
+        tags: [], // You could parse tags from description or add a tags field
+        settings: {
+          isPrivate: !hiveForm.isPublic,
+          requireApproval: false,
+          maxMembers: parseInt(hiveForm.maxMembers)
+        }
+      };
+
+      console.log('Creating hive with data:', hiveData);
+      
+      const result = await hivesAPI.createHive(hiveData);
+      
+      if (result.success) {
+        // Reset form
+        setHiveForm({
+          name: '',
+          subject: '',
+          description: '',
+          level: 'Beginner',
+          maxMembers: 15,
+          isPublic: true
+        });
+        
+        // Redirect to the new hive
+        navigate(`/study-groups/${result.data._id}`);
+      } else {
+        setCreateError(result.message || 'Failed to create group');
+      }
+    } catch (error) {
+      console.error('Error creating hive:', error);
+      setCreateError(error.response?.data?.message || 'An error occurred while creating the group');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const RecommendationCard = ({ recommendation }) => (
@@ -396,68 +489,116 @@ const StudyGroups = () => {
         {activeTab === 'create' && (
           <div className="bg-white rounded-xl shadow-sm p-8">
             <h3 className="text-lg font-medium text-gray-900 mb-6">Create New Study Group</h3>
-            <div className="space-y-6">
+            
+            {createError && (
+              <div className="mb-6 p-4 text-sm text-red-700 bg-red-100 rounded-lg">
+                {createError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateHive} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Group Name</label>
                 <input
                   type="text"
+                  name="name"
+                  value={hiveForm.name}
+                  onChange={handleFormChange}
                   className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                   placeholder="Enter group name"
+                  required
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-                <select className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
-                  <option>Select a subject</option>
-                  <option>Mathematics</option>
-                  <option>Biology</option>
-                  <option>Computer Science</option>
-                  <option>Physics</option>
-                  <option>History</option>
-                  <option>Other</option>
+                <select 
+                  name="subject"
+                  value={hiveForm.subject}
+                  onChange={handleFormChange}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  required
+                >
+                  <option value="">Select a subject</option>
+                  <option value="Mathematics">Mathematics</option>
+                  <option value="Biology">Biology</option>
+                  <option value="Computer Science">Computer Science</option>
+                  <option value="Physics">Physics</option>
+                  <option value="History">History</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                 <textarea
+                  name="description"
+                  value={hiveForm.description}
+                  onChange={handleFormChange}
                   rows={4}
                   className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                   placeholder="Describe your study group's goals and focus areas"
-                ></textarea>
+                  required
+                />
               </div>
               <div className="flex gap-6">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
-                  <select className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500">
-                    <option>Beginner</option>
-                    <option>Intermediate</option>
-                    <option>Advanced</option>
-                    <option>All Levels</option>
+                  <select 
+                    name="level"
+                    value={hiveForm.level}
+                    onChange={handleFormChange}
+                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="Beginner">Beginner</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
+                    <option value="All Levels">All Levels</option>
                   </select>
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Max Members</label>
                   <input
                     type="number"
+                    name="maxMembers"
+                    value={hiveForm.maxMembers}
+                    onChange={handleFormChange}
                     min="2"
                     max="50"
-                    defaultValue="15"
                     className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
               </div>
               <div>
                 <label className="flex items-center">
-                  <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                  <input 
+                    type="checkbox" 
+                    name="isPublic"
+                    checked={hiveForm.isPublic}
+                    onChange={handleFormChange}
+                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" 
+                  />
                   <span className="ml-2 text-sm text-gray-700">Make this group public</span>
                 </label>
               </div>
               <div className="pt-4">
-                <button className="px-6 py-3 bg-gradient-to-r from-primary-600 to-secondary-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-secondary-700 transition-colors">
-                  Create Study Group
+                <button 
+                  type="submit"
+                  disabled={isCreating}
+                  className="px-6 py-3 bg-gradient-to-r from-primary-600 to-secondary-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-secondary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                >
+                  {isCreating ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Study Group'
+                  )}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         )}
       </div>
