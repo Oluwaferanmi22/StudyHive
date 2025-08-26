@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import socketService from '../../services/socketService';
-import { MessageSkeleton, TypingIndicator, InlineLoader } from '../Common/Loaders';
+import { SkeletonMessage, TypingIndicator, InlineLoader } from '../Common/Loaders';
 
 const StudyGroupChat = ({ groupId, groupName }) => {
   const { user } = useAuth();
@@ -220,10 +220,10 @@ const StudyGroupChat = ({ groupId, groupName }) => {
         {isLoading ? (
           // Show loading skeletons while messages are loading
           <>            
-            <MessageSkeleton />
-            <MessageSkeleton align="right" />
-            <MessageSkeleton />
-            <MessageSkeleton align="right" />
+            <SkeletonMessage />
+            <SkeletonMessage align="right" />
+            <SkeletonMessage />
+            <SkeletonMessage align="right" />
           </>
         ) : (
           <>

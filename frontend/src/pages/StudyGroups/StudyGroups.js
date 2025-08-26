@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AIMatchingQuiz from '../../components/StudyGroups/AIMatchingQuiz';
-import { CardSkeleton, ButtonLoader, InlineLoader } from '../../components/Common/Loaders';
+import { SkeletonCard, ButtonLoader, InlineLoader } from '../../components/Common/Loaders';
 
 const StudyGroups = () => {
   const [activeTab, setActiveTab] = useState('browse');
@@ -298,12 +298,12 @@ const StudyGroups = () => {
               {isLoading ? (
                 // Show loading skeletons while groups are loading
                 <>                  
-                  <CardSkeleton />
-                  <CardSkeleton />
-                  <CardSkeleton />
-                  <CardSkeleton />
-                  <CardSkeleton />
-                  <CardSkeleton />
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
                 </>
               ) : (
                 filteredGroups.map((group) => (

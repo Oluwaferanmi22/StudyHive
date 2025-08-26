@@ -145,9 +145,7 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Create indexes for better performance
-userSchema.index({ email: 1 });
-userSchema.index({ username: 1 });
+// Create indexes for better performance (email and username already indexed via unique: true)
 userSchema.index({ 'preferences.studySubjects': 1 });
 userSchema.index({ 'gamification.points': -1 });
 

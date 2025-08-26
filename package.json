@@ -1,0 +1,20 @@
+{
+  "name": "studyhive",
+  "version": "1.0.0",
+  "description": "StudyHive - A web platform connecting students into focused study groups",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "install-deps": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": ["education", "study", "collaboration", "real-time", "socket.io"],
+  "author": "Feranmi",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
