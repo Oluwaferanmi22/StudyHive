@@ -13,17 +13,27 @@ import Gamification from './pages/Gamification/Gamification';
 import AITutor from './pages/AITutor/AITutor';
 import { AuthProvider } from './contexts/AuthContext';
 import { StudyHivesProvider } from './contexts/StudyHivesContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { TimerProvider } from './contexts/TimerContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import ConnectionStatus from './components/Common/ConnectionStatus';
+import NotificationContainer from './components/Common/NotificationContainer';
+import StudyTimer from './pages/StudyTimer/StudyTimer';
+import './styles/theme.css';
 
 function App() {
   return (
-    <AuthProvider>
-      <StudyHivesProvider>
-        <Router>
-          <div className="min-h-screen bg-gray-50">
-            <Navbar />
-            <ConnectionStatus />
-            <main className="pt-16">
+    <ThemeProvider>
+      <AuthProvider>
+        <StudyHivesProvider>
+          <TimerProvider>
+            <NotificationProvider>
+          <Router>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+              <Navbar />
+              <ConnectionStatus />
+              <NotificationContainer />
+              <main className="pt-16">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
@@ -33,14 +43,18 @@ function App() {
                 <Route path="/study-groups/:groupId" element={<StudyGroupDetail />} />
                 <Route path="/gamification" element={<Gamification />} />
                 <Route path="/ai-tutor" element={<AITutor />} />
+                <Route path="/study-timer" element={<StudyTimer />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </main>
-          </div>
-        </Router>
-      </StudyHivesProvider>
-    </AuthProvider>
+              </main>
+            </div>
+          </Router>
+            </NotificationProvider>
+          </TimerProvider>
+        </StudyHivesProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

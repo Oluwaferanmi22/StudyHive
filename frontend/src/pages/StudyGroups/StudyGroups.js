@@ -27,94 +27,73 @@ const StudyGroups = () => {
     isPublic: true
   });
 
-  // Mock data for study groups
-  const studyGroups = [
-    {
-      id: 1,
-      name: 'Mathematics 101',
-      subject: 'Mathematics',
-      description: 'Collaborative study group for foundational mathematics concepts including algebra, geometry, and basic calculus.',
-      members: 12,
-      maxMembers: 20,
-      level: 'Beginner',
-      isPublic: true,
-      tags: ['Algebra', 'Geometry', 'Calculus'],
-      creator: 'Sarah Johnson',
-      created: '2 weeks ago',
-      color: 'from-blue-500 to-blue-600'
-    },
-    {
-      id: 2,
-      name: 'Biology Exam Prep',
-      subject: 'Biology',
-      description: 'Intensive exam preparation for advanced biology topics. Focus on cell biology, genetics, and evolution.',
-      members: 8,
-      maxMembers: 15,
-      level: 'Advanced',
-      isPublic: true,
-      tags: ['Cell Biology', 'Genetics', 'Evolution'],
-      creator: 'Mike Chen',
-      created: '5 days ago',
-      color: 'from-green-500 to-green-600'
-    },
-    {
-      id: 3,
-      name: 'Programming Fundamentals',
-      subject: 'Computer Science',
-      description: 'Learn programming basics with JavaScript, Python, and algorithms. Perfect for beginners!',
-      members: 15,
-      maxMembers: 25,
-      level: 'Beginner',
-      isPublic: true,
-      tags: ['JavaScript', 'Python', 'Algorithms'],
-      creator: 'Alex Rivera',
-      created: '1 week ago',
-      color: 'from-purple-500 to-purple-600'
-    },
-    {
-      id: 4,
-      name: 'Physics Problem Solving',
-      subject: 'Physics',
-      description: 'Work through challenging physics problems together. Focus on mechanics and thermodynamics.',
-      members: 6,
-      maxMembers: 12,
-      level: 'Intermediate',
-      isPublic: true,
-      tags: ['Mechanics', 'Thermodynamics', 'Problem Solving'],
-      creator: 'Emma Davis',
-      created: '3 days ago',
-      color: 'from-red-500 to-red-600'
-    },
-    {
-      id: 5,
-      name: 'History Discussion Circle',
-      subject: 'History',
-      description: 'Engaging discussions about world history, with focus on modern events and their impact.',
-      members: 10,
-      maxMembers: 15,
-      level: 'All Levels',
-      isPublic: true,
-      tags: ['World History', 'Modern History', 'Discussion'],
-      creator: 'James Wilson',
-      created: '4 days ago',
-      color: 'from-yellow-500 to-yellow-600'
-    }
-  ];
+  const [myGroups, setMyGroups] = useState([]);
 
   useEffect(() => {
-    // Simulate loading groups from API
-    const loadGroups = async () => {
-      setIsLoading(true);
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setGroups(studyGroups);
-      setIsLoading(false);
-    };
+    loadAllGroups();
+    if (user) {
+      loadMyGroups();
+    }
+  }, [user]);
 
-    loadGroups();
-  }, []);
+  // Load all public groups
+  const loadAllGroups = async () => {
+    try {
+      setIsLoading(true);
+      const result = await hivesAPI.getHives();
+      if (result.success) {
+        setGroups(result.data || []);
+      } else {
+        console.error('Failed to load groups:', result.message);
+        setGroups([]);
+      }
+    } catch (error) {
+      console.error('Error loading groups:', error);
+      setGroups([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load user's groups
+  const loadMyGroups = async () => {
+    try {
+      const result = await hivesAPI.getMyHives();
+      if (result.success) {
+        setMyGroups(result.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading my groups:', error);
+    }
+  };
+
+  // Handle joining a group
+  const handleJoinHive = async (hiveId) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      setIsJoining(prev => ({ ...prev, [hiveId]: true }));
+      const result = await hivesAPI.joinHive(hiveId);
+      
+      if (result.success) {
+        // Refresh both lists
+        await loadAllGroups();
+        await loadMyGroups();
+        // Navigate to the hive
+        navigate(`/study-groups/${hiveId}`);
+      } else {
+        alert(result.message || 'Failed to join group');
+      }
+    } catch (error) {
+      console.error('Error joining hive:', error);
+      alert(error.response?.data?.message || 'An error occurred while joining the group');
+    } finally {
+      setIsJoining(prev => ({ ...prev, [hiveId]: false }));
+    }
+  };
 
   const filteredGroups = groups.filter(group =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -236,59 +215,130 @@ const StudyGroups = () => {
     </div>
   );
 
-  const GroupCard = ({ group }) => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-      <div className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3">
-            <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${group.color} flex items-center justify-center text-white font-semibold`}>
-              {group.name.charAt(0)}
+  // Helper function to get a consistent color for each group
+  const getGroupColor = (name) => {
+    const colors = [
+      'from-blue-500 to-blue-600',
+      'from-green-500 to-green-600',
+      'from-purple-500 to-purple-600',
+      'from-red-500 to-red-600',
+      'from-yellow-500 to-yellow-600',
+      'from-indigo-500 to-indigo-600',
+      'from-pink-500 to-pink-600',
+      'from-teal-500 to-teal-600'
+    ];
+    const hash = name.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Helper function to check if user is already a member
+  const isUserMember = (group) => {
+    return user && group.members && group.members.some(member => 
+      member.userId === user.id || member.userId._id === user.id
+    );
+  };
+
+  const GroupCard = ({ group }) => {
+    const isMember = isUserMember(group);
+    const memberCount = group.memberCount || (group.members ? group.members.length : 0);
+    const maxMembers = group.settings?.maxMembers || 50;
+    const isPrivate = group.settings?.isPrivate || false;
+    const creatorName = group.creator?.profile?.firstName + ' ' + group.creator?.profile?.lastName || 
+                       group.creator?.username || 'Unknown';
+    
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+        <div className="p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-3">
+              <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${getGroupColor(group.name)} flex items-center justify-center text-white font-semibold`}>
+                {group.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">{group.name}</h3>
+                <p className="text-sm text-gray-600">{group.subject}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">{group.name}</h3>
-              <p className="text-sm text-gray-600">{group.subject} • {group.level}</p>
+            <div className="flex items-center space-x-2">
+              {isMember && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Joined
+                </span>
+              )}
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                {!isPrivate ? 'Public' : 'Private'}
+              </span>
             </div>
           </div>
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            {group.isPublic ? 'Public' : 'Private'}
-          </span>
-        </div>
 
-        <p className="mt-4 text-gray-700 text-sm leading-relaxed">{group.description}</p>
+          <p className="mt-4 text-gray-700 text-sm leading-relaxed">{group.description}</p>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {group.tags.map((tag) => (
-            <span key={tag} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
-              {tag}
-            </span>
-          ))}
-        </div>
+          {group.tags && group.tags.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {group.tags.map((tag, index) => (
+                <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
 
-        <div className="mt-6 flex items-center justify-between">
-          <div className="flex items-center space-x-4 text-sm text-gray-600">
-            <span className="flex items-center">
-              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM5 10a7 7 0 1110 0v4a1 1 0 01-1 1H6a1 1 0 01-1-1v-4z" />
-              </svg>
-              {group.members}/{group.maxMembers} members
-            </span>
-            <span>Created by {group.creator}</span>
-          </div>
-          <div className="flex space-x-3">
-            <Link
-              to={`/study-groups/${group.id}`}
-              className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              💬 View & Chat
-            </Link>
-            <button className="px-4 py-2 bg-gradient-to-r from-primary-600 to-secondary-600 text-white text-sm font-medium rounded-lg hover:from-primary-700 hover:to-secondary-700 transition-colors">
-              Join Hive
-            </button>
+          <div className="mt-6 flex items-center justify-between">
+            <div className="flex items-center space-x-4 text-sm text-gray-600">
+              <span className="flex items-center">
+                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM5 10a7 7 0 1110 0v4a1 1 0 01-1 1H6a1 1 0 01-1-1v-4z" />
+                </svg>
+                {memberCount}/{maxMembers} members
+              </span>
+              <span>Created by {creatorName}</span>
+            </div>
+            <div className="flex space-x-3">
+              {isMember ? (
+                <Link
+                  to={`/study-groups/${group._id}`}
+                  className="px-4 py-2 bg-gradient-to-r from-primary-600 to-secondary-600 text-white text-sm font-medium rounded-lg hover:from-primary-700 hover:to-secondary-700 transition-colors"
+                >
+                  💬 Open Chat
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to={`/study-groups/${group._id}`}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    👁️ Preview
+                  </Link>
+                  <button 
+                    onClick={() => handleJoinHive(group._id)}
+                    disabled={isJoining[group._id] || memberCount >= maxMembers}
+                    className="px-4 py-2 bg-gradient-to-r from-primary-600 to-secondary-600 text-white text-sm font-medium rounded-lg hover:from-primary-700 hover:to-secondary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                  >
+                    {isJoining[group._id] ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Joining...
+                      </>
+                    ) : memberCount >= maxMembers ? (
+                      'Full'
+                    ) : (
+                      '🐝 Join Hive'
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
