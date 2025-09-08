@@ -54,10 +54,10 @@ const Profile = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Profile Header */}
-        <div className="bg-white rounded-xl shadow-sm mb-8">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm mb-8">
           <div className="relative h-32 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-t-xl"></div>
           <div className="relative px-6 pb-6">
             <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-6">
@@ -69,13 +69,13 @@ const Profile = () => {
               <div className="mt-4 sm:mt-0 flex-1">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900">{user?.name}</h1>
-                    <p className="text-gray-600">{formData.major} at {formData.university}</p>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{user?.name}</h1>
+                    <p className="text-gray-600 dark:text-gray-300">{formData.major} at {formData.university}</p>
                     <div className="flex items-center mt-2 space-x-4">
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
                         {user?.badge || 'Helper'} • {user?.reputation || 150} pts
                       </span>
-                      <span className="text-sm text-gray-600">📍 {formData.location}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-300">📍 {formData.location}</span>
                     </div>
                   </div>
                   <button
@@ -91,7 +91,7 @@ const Profile = () => {
         </div>
 
         {/* Tabs */}
-        <div className="mb-8 border-b border-gray-200">
+        <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
           <nav className="-mb-px flex space-x-8">
             {[
               { id: 'overview', label: 'Overview' },
@@ -105,7 +105,7 @@ const Profile = () => {
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
                     ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300'
                 }`}
               >
                 {tab.label}
@@ -119,42 +119,42 @@ const Profile = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Stats */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Study Statistics</h2>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Study Statistics</h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                   {studyStats.map((stat, index) => (
                     <div key={index} className="text-center">
                       <div className="text-2xl mb-2">{stat.icon}</div>
-                      <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
-                      <div className="text-sm text-gray-600">{stat.label}</div>
+                      <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stat.value}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">{stat.label}</div>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Bio and Interests */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">About</h2>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">About</h2>
                 {isEditing ? (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bio</label>
                       <textarea
                         name="bio"
                         value={formData.bio}
                         onChange={handleInputChange}
                         rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Study Interests</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Study Interests</label>
                       <input
                         type="text"
                         name="studyInterests"
                         value={formData.studyInterests}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       />
                     </div>
                     <button
@@ -167,11 +167,11 @@ const Profile = () => {
                 ) : (
                   <div className="space-y-4">
                     <div>
-                      <h3 className="font-medium text-gray-900 mb-2">Bio</h3>
-                      <p className="text-gray-700">{formData.bio}</p>
+                      <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Bio</h3>
+                      <p className="text-gray-700 dark:text-gray-300">{formData.bio}</p>
                     </div>
                     <div>
-                      <h3 className="font-medium text-gray-900 mb-2">Study Interests</h3>
+                      <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Study Interests</h3>
                       <div className="flex flex-wrap gap-2">
                         {formData.studyInterests.split(', ').map((interest, index) => (
                           <span
@@ -190,15 +190,15 @@ const Profile = () => {
 
             {/* Recent Activity */}
             <div>
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Recent Activity</h2>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Recent Activity</h2>
                 <div className="space-y-4">
                   {recentActivity.slice(0, 5).map((activity) => (
                     <div key={activity.id} className="flex items-start space-x-3">
                       <div className="flex-shrink-0 w-2 h-2 bg-primary-500 rounded-full mt-2"></div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-900">{activity.text}</p>
-                        <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+                        <p className="text-sm text-gray-900 dark:text-gray-100">{activity.text}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{activity.time}</p>
                       </div>
                     </div>
                   ))}
@@ -209,15 +209,15 @@ const Profile = () => {
         )}
 
         {activeTab === 'activity' && (
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Activity History</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Activity History</h2>
             <div className="space-y-4">
               {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
+                <div key={activity.id} className="flex items-start space-x-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
                   <div className="flex-shrink-0 w-3 h-3 bg-primary-500 rounded-full mt-1"></div>
                   <div className="flex-1">
-                    <p className="text-gray-900">{activity.text}</p>
-                    <p className="text-sm text-gray-500 mt-1">{activity.time}</p>
+                    <p className="text-gray-900 dark:text-gray-100">{activity.text}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{activity.time}</p>
                   </div>
                 </div>
               ))}
@@ -226,17 +226,17 @@ const Profile = () => {
         )}
 
         {activeTab === 'badges' && (
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Earned Badges</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Earned Badges</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {badges.map((badge) => (
-                <div key={badge.id} className="bg-gray-50 rounded-lg p-6 text-center">
+                <div key={badge.id} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 text-center">
                   <div className={`w-16 h-16 ${badge.color} rounded-full flex items-center justify-center text-2xl text-white mx-auto mb-4`}>
                     {badge.icon}
                   </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">{badge.name}</h3>
-                  <p className="text-sm text-gray-600 mb-2">{badge.description}</p>
-                  <p className="text-xs text-gray-500">Earned {badge.earned}</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">{badge.name}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{badge.description}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Earned {badge.earned}</p>
                 </div>
               ))}
             </div>
@@ -244,66 +244,66 @@ const Profile = () => {
         )}
 
         {activeTab === 'settings' && (
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Profile Settings</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Profile Settings</h2>
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Full Name</label>
                   <input
                     type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">University</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">University</label>
                   <input
                     type="text"
                     name="university"
                     value={formData.university}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Major</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Major</label>
                   <input
                     type="text"
                     name="major"
                     value={formData.major}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
               </div>
 
-              <div className="pt-6 border-t border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Notifications</h3>
+              <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Notifications</h3>
                 <div className="space-y-4">
                   <label className="flex items-center">
-                    <input type="checkbox" defaultChecked className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                    <span className="ml-3 text-sm text-gray-700">Email notifications for new messages</span>
+                    <input type="checkbox" defaultChecked className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500" />
+                    <span className="ml-3 text-sm text-gray-700 dark:text-gray-300">Email notifications for new messages</span>
                   </label>
                   <label className="flex items-center">
-                    <input type="checkbox" defaultChecked className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                    <span className="ml-3 text-sm text-gray-700">Email notifications for study session reminders</span>
+                    <input type="checkbox" defaultChecked className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500" />
+                    <span className="ml-3 text-sm text-gray-700 dark:text-gray-300">Email notifications for study session reminders</span>
                   </label>
                   <label className="flex items-center">
-                    <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                    <span className="ml-3 text-sm text-gray-700">Weekly activity summary</span>
+                    <input type="checkbox" className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500" />
+                    <span className="ml-3 text-sm text-gray-700 dark:text-gray-300">Weekly activity summary</span>
                   </label>
                 </div>
               </div>
