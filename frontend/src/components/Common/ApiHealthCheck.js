@@ -53,52 +53,52 @@ const ApiHealthCheck = () => {
     }
   };
 
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
-      <h3 className="text-lg font-semibold mb-4 text-center">
-        Backend API Health Check
-      </h3>
+  // return (
+  //   <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
+  //     <h3 className="text-lg font-semibold mb-4 text-center">
+  //       Backend API Health Check
+  //     </h3>
       
-      <div className="text-center mb-4">
-        <button
-          onClick={checkHealth}
-          disabled={status === 'checking'}
-          className="px-6 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg transition-colors"
-        >
-          {status === 'checking' ? 'Checking...' : 'Check Connection'}
-        </button>
-      </div>
+  //     <div className="text-center mb-4">
+  //       <button
+  //         onClick={checkHealth}
+  //         disabled={status === 'checking'}
+  //         className="px-6 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg transition-colors"
+  //       >
+  //         {status === 'checking' ? 'Checking...' : 'Check Connection'}
+  //       </button>
+  //     </div>
 
-      {result && (
-        <div className={`p-4 rounded-lg border ${getStatusColor()}`}>
-          <div className="flex items-center space-x-2 mb-2">
-            <span className="text-xl">{getStatusIcon()}</span>
-            <span className="font-medium">
-              {status === 'success' ? 'Connected' : 'Connection Failed'}
-            </span>
-          </div>
+  //     {result && (
+  //       <div className={`p-4 rounded-lg border ${getStatusColor()}`}>
+  //         <div className="flex items-center space-x-2 mb-2">
+  //           <span className="text-xl">{getStatusIcon()}</span>
+  //           <span className="font-medium">
+  //             {status === 'success' ? 'Connected' : 'Connection Failed'}
+  //           </span>
+  //         </div>
           
-          <div className="text-sm space-y-1">
-            <p><strong>Message:</strong> {result.message}</p>
-            <p><strong>Time:</strong> {result.timestamp}</p>
+  //         <div className="text-sm space-y-1">
+  //           <p><strong>Message:</strong> {result.message}</p>
+  //           <p><strong>Time:</strong> {result.timestamp}</p>
             
-            {result.responseTime && (
-              <p><strong>Response Time:</strong> {result.responseTime}ms</p>
-            )}
+  //           {result.responseTime && (
+  //             <p><strong>Response Time:</strong> {result.responseTime}ms</p>
+  //           )}
             
-            {result.status && result.status !== 0 && (
-              <p><strong>Status Code:</strong> {result.status}</p>
-            )}
-          </div>
-        </div>
-      )}
+  //           {result.status && result.status !== 0 && (
+  //             <p><strong>Status Code:</strong> {result.status}</p>
+  //           )}
+  //         </div>
+  //       </div>
+  //     )}
 
-      <div className="mt-4 text-xs text-gray-500 text-center">
-        <p>Backend URL: {process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}</p>
-        <p>Socket URL: {process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000'}</p>
-      </div>
-    </div>
-  );
+  //     <div className="mt-4 text-xs text-gray-500 text-center">
+  //       <p>Backend URL: {process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}</p>
+  //       <p>Socket URL: {process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000'}</p>
+  //     </div>
+  //   </div>
+  // );
 };
 
 export default ApiHealthCheck;

@@ -67,7 +67,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* API Health Check Section */}
+      {/* API Health Check Section
       <section className="py-16 px-6">
         <div className="max-w-7xl mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8">
@@ -75,7 +75,7 @@ const Home = () => {
           </h2>
           <ApiHealthCheck />
         </div>
-      </section>
+      </section> */}
 
       {/* CTA Section */}
       <section className="py-16 px-6">

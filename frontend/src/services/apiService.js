@@ -220,6 +220,27 @@ export const usersAPI = {
   }
 };
 
+// Resources API
+export const resourcesAPI = {
+  list: async (hiveId) => {
+    const response = await api.get('/resources', { params: { hiveId } });
+    return response.data;
+  },
+  uploadPdf: async ({ hiveId, file, title, description, subject, tags = [] }) => {
+    const formData = new FormData();
+    formData.append('hiveId', hiveId);
+    if (title) formData.append('title', title);
+    if (description) formData.append('description', description);
+    if (subject) formData.append('subject', subject);
+    if (tags && tags.length) formData.append('tags', tags.join(','));
+    formData.append('file', file);
+    const response = await api.post('/resources/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  }
+};
+
 // Health check
 export const healthAPI = {
   check: async () => {

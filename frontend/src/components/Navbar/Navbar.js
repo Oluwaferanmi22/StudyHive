@@ -40,22 +40,10 @@ const Navbar = () => {
             {isAuthenticated && (
               <>
                 <Link
-                  to="/dashboard"
-                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors"
-                >
-                  Dashboard
-                </Link>
-                <Link
                   to="/study-groups"
                   className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors"
                 >
                   Study Groups
-                </Link>
-                <Link
-                  to="/gamification"
-                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors"
-                >
-                  🎮 Gamification
                 </Link>
                 <Link
                   to="/ai-tutor"
@@ -64,10 +52,10 @@ const Navbar = () => {
                   🤖 AI Tutor
                 </Link>
                 <Link
-                  to="/study-timer"
+                  to="/upgrade"
                   className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors"
                 >
-                  🍅 Timer
+                  🚀 Upgrade
                 </Link>
               </>
             )}
@@ -81,12 +69,14 @@ const Navbar = () => {
                 >
                   <div className="flex items-center space-x-2 bg-gradient-to-r from-primary-50 to-secondary-50 px-4 py-2 rounded-full">
                     <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center text-white font-medium">
-                      {user?.name?.charAt(0) || 'U'}
+                      {(user?.profile?.firstName || user?.username || 'U')?.charAt(0)}
                     </div>
-                    <span className="font-medium text-gray-700">{user?.name}</span>
-                    <div className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                      {user?.reputation} pts
-                    </div>
+                    <span className="font-medium text-gray-700">{user?.profile?.firstName || user?.username || 'User'}</span>
+                    {user?.isPremium && (
+                      <div className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                        Premium
+                      </div>
+                    )}
                   </div>
                 </button>
 
@@ -154,18 +144,25 @@ const Navbar = () => {
               {isAuthenticated && (
                 <>
                   <Link
-                    to="/dashboard"
-                    className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
-                  <Link
                     to="/study-groups"
                     className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Study Groups
+                  </Link>
+                  <Link
+                    to="/ai-tutor"
+                    className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    AI Tutor
+                  </Link>
+                  <Link
+                    to="/upgrade"
+                    className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Upgrade
                   </Link>
                   <Link
                     to="/profile"

@@ -11,6 +11,7 @@ import StudyGroupDetail from './pages/StudyGroups/StudyGroupDetail';
 import Profile from './pages/Profile/Profile';
 import Gamification from './pages/Gamification/Gamification';
 import AITutor from './pages/AITutor/AITutor';
+import Upgrade from './pages/Upgrade/Upgrade';
 import { AuthProvider } from './contexts/AuthContext';
 import { StudyHivesProvider } from './contexts/StudyHivesContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -43,6 +44,7 @@ function App() {
                 <Route path="/study-groups/:groupId" element={<StudyGroupDetail />} />
                 <Route path="/gamification" element={<Gamification />} />
                 <Route path="/ai-tutor" element={<AITutor />} />
+                <Route path="/upgrade" element={<Upgrade />} />
                 <Route path="/study-timer" element={<StudyTimer />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

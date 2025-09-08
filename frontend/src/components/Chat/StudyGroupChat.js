@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import socketService from '../../services/socketService';
+import { messagesAPI } from '../../services/apiService';
 import { SkeletonMessage, TypingIndicator, InlineLoader } from '../Common/Loaders';
 
 const StudyGroupChat = ({ groupId, groupName }) => {
@@ -13,81 +14,102 @@ const StudyGroupChat = ({ groupId, groupName }) => {
   const [isSending, setIsSending] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
   const messagesEndRef = useRef(null);
-  const socketRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // Mock messages for demo (in real app, this would come from Socket.IO)
-  const mockMessages = [
-    {
-      id: 1,
-      user: { name: 'Sarah Johnson', id: '2' },
-      message: 'Hey everyone! Ready for today\'s study session?',
-      timestamp: new Date(Date.now() - 3600000),
-      type: 'message'
-    },
-    {
-      id: 2,
-      user: { name: 'Mike Chen', id: '3' },
-      message: 'Yes! I have some great notes to share on Chapter 5.',
-      timestamp: new Date(Date.now() - 3500000),
-      type: 'message'
-    },
-    {
-      id: 3,
-      user: { name: 'System', id: 'system' },
-      message: 'Alex Rivera joined the study group',
-      timestamp: new Date(Date.now() - 3000000),
-      type: 'system'
-    },
-    {
-      id: 4,
-      user: { name: 'Alex Rivera', id: '4' },
-      message: 'Thanks for having me! Looking forward to learning together.',
-      timestamp: new Date(Date.now() - 2800000),
-      type: 'message'
-    }
-  ];
-
+  // Load initial messages from backend
   useEffect(() => {
-    // Simulate loading messages
-    const loadMessages = async () => {
-      setIsLoading(true);
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Initialize with mock messages
-      setMessages(mockMessages);
-      
-      // Mock connection status
-      setIsConnected(true);
-      setOnlineUsers([
-        { id: '2', name: 'Sarah Johnson' },
-        { id: '3', name: 'Mike Chen' },
-        { id: '4', name: 'Alex Rivera' }
-      ]);
-      
-      setIsLoading(false);
+    let isMounted = true;
+    const fetchMessages = async () => {
+      try {
+        setIsLoading(true);
+        const res = await messagesAPI.getMessages(groupId, { limit: 50 });
+        if (!isMounted) return;
+        const list = Array.isArray(res.data) ? res.data : [];
+        const normalized = list.map((m) => ({
+          id: m._id,
+          user: {
+            id: m.author?._id || m.author,
+            name: (m.author && (m.author.profile?.firstName || m.author.username))
+              ? `${m.author.profile?.firstName || m.author.username}`
+              : 'User'
+          },
+          message: m.content,
+          timestamp: m.createdAt,
+          type: m.messageType === 'system' ? 'system' : 'message'
+        }));
+        setMessages(normalized);
+      } catch (err) {
+        // silently ignore for now
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    if (groupId) fetchMessages();
+    return () => { isMounted = false; };
+  }, [groupId]);
+
+  // Socket wiring
+  useEffect(() => {
+    const status = socketService.getConnectionStatus();
+    setIsConnected(!!status.connected);
+
+    const handleConnectionStatus = ({ connected }) => setIsConnected(connected);
+    const handleHiveJoined = ({ hiveId, onlineUsers: online }) => {
+      if (hiveId === groupId) {
+        // Store user IDs; UI shows count
+        setOnlineUsers(Array.isArray(online) ? online : []);
+        setIsLoading(false);
+      }
+    };
+    const handleNewMessage = ({ message, hiveId }) => {
+      if (hiveId !== groupId) return;
+      const normalized = {
+        id: message?._id || Date.now(),
+        user: {
+          id: message?.author?._id || message?.author || 'unknown',
+          name:
+            (message?.author && (message.author.profile?.firstName || message.author.username))
+              ? `${message.author.profile?.firstName || message.author.username}`
+              : 'User'
+        },
+        message: message?.content,
+        timestamp: message?.createdAt || new Date(),
+        type: message?.messageType === 'system' ? 'system' : 'message'
+      };
+      setMessages(prev => [...prev, normalized]);
+    };
+    const handleTypingStart = ({ username, userId, hiveId }) => {
+      if (hiveId !== groupId) return;
+      const name = username || userId || 'Someone';
+      setTypingUsers(prev => (prev.includes(name) ? prev : [...prev, name]));
+    };
+    const handleTypingStop = ({ userId, hiveId }) => {
+      if (hiveId !== groupId) return;
+      setTypingUsers(prev => prev.filter(n => n !== userId));
     };
 
-    loadMessages();
+    socketService.on('connection_status', handleConnectionStatus);
+    socketService.on('hive_joined', handleHiveJoined);
+    socketService.on('new_message', handleNewMessage);
+    socketService.on('user_typing_start', handleTypingStart);
+    socketService.on('user_typing_stop', handleTypingStop);
 
-    // In a real app, you would connect to Socket.IO server here:
-    // socketRef.current = socketService.getSocket();
-    // socketRef.current.emit('join-group', { groupId, user });
-    // socketRef.current.on('connect', () => setIsConnected(true));
-    // socketRef.current.on('disconnect', () => setIsConnected(false));
-    // socketRef.current.on('new-message', handleNewMessage);
-    // socketRef.current.on('user-joined', handleUserJoined);
-    // socketRef.current.on('user-left', handleUserLeft);
-    // socketRef.current.on('online-users', setOnlineUsers);
-    // socketRef.current.on('typing', handleTyping);
-    // socketRef.current.on('stop-typing', handleStopTyping);
+    if (groupId) {
+      socketService.joinHive(groupId);
+    }
+
+    const loadingTimer = setTimeout(() => setIsLoading(false), 2000);
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
+      clearTimeout(loadingTimer);
+      if (groupId) {
+        socketService.leaveHive(groupId);
       }
+      socketService.off('connection_status', handleConnectionStatus);
+      socketService.off('hive_joined', handleHiveJoined);
+      socketService.off('new_message', handleNewMessage);
+      socketService.off('user_typing_start', handleTypingStart);
+      socketService.off('user_typing_stop', handleTypingStop);
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
@@ -110,30 +132,30 @@ const StudyGroupChat = ({ groupId, groupName }) => {
     const messageText = newMessage;
     setNewMessage('');
 
-    const message = {
-      id: Date.now(),
-      user: user,
+    try {
+      const tempId = `tmp_${Date.now()}`;
+      setMessages(prev => [
+        ...prev,
+        {
+          id: tempId,
+          user: { id: user?.id || 'me', name: user?.username || user?.profile?.firstName || 'Me' },
       message: messageText,
       timestamp: new Date(),
       type: 'message'
-    };
-
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // In real app: socketRef.current.emit('send-message', message);
-    // For demo, add to local state
-    setMessages(prev => [...prev, message]);
+        }
+      ]);
+      socketService.sendMessage({ content: messageText, hiveId: groupId, messageType: 'text' });
+    } finally {
     setIsSending(false);
+    }
   };
 
   const handleInputChange = (e) => {
     setNewMessage(e.target.value);
     
-    // In real app, emit typing event
-    // if (socketRef.current) {
-    //   socketRef.current.emit('typing', { groupId, user: user.name });
-    // }
+    if (groupId && isConnected) {
+      socketService.startTyping(groupId);
+    }
     
     // Clear previous timeout and set new one to stop typing
     if (typingTimeoutRef.current) {
@@ -141,9 +163,9 @@ const StudyGroupChat = ({ groupId, groupName }) => {
     }
     
     typingTimeoutRef.current = setTimeout(() => {
-      // if (socketRef.current) {
-      //   socketRef.current.emit('stop-typing', { groupId, user: user.name });
-      // }
+      if (groupId && isConnected) {
+        socketService.stopTyping(groupId);
+      }
     }, 1000);
   };
 
@@ -198,13 +220,13 @@ const StudyGroupChat = ({ groupId, groupName }) => {
           </p>
         </div>
         <div className="flex -space-x-1">
-          {onlineUsers.slice(0, 3).map((user) => (
+          {onlineUsers.slice(0, 3).map((id) => (
             <div
-              key={user.id}
+              key={id}
               className="w-8 h-8 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center text-white text-xs font-medium border-2 border-white"
-              title={user.name}
+              title={String(id)}
             >
-              {user.name.charAt(0)}
+              {String(id).charAt(0)}
             </div>
           ))}
           {onlineUsers.length > 3 && (
@@ -221,9 +243,9 @@ const StudyGroupChat = ({ groupId, groupName }) => {
           // Show loading skeletons while messages are loading
           <>            
             <SkeletonMessage />
-            <SkeletonMessage align="right" />
+            <SkeletonMessage isOwn />
             <SkeletonMessage />
-            <SkeletonMessage align="right" />
+            <SkeletonMessage isOwn />
           </>
         ) : (
           <>
