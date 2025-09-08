@@ -97,7 +97,7 @@ const StudyGroupDetail = () => {
         {/* Tabs */}
         <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
           <nav className="-mb-px flex space-x-8">
-            {[ 
+            {[
               { id: 'overview', label: 'Overview' },
               { id: 'chat', label: 'Chat' },
               { id: 'video', label: 'Video' },

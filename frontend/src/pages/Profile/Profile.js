@@ -75,9 +75,32 @@ const Profile = () => {
           <div className="relative px-6 pb-6">
             <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-6">
               <div className="-mt-16 relative">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-r from-primary-600 to-secondary-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
-                  {user?.name?.charAt(0) || 'U'}
-                </div>
+                {user?.profile?.avatar ? (
+                  <img src={`/${user.profile.avatar}`} alt="Avatar" className="w-32 h-32 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-lg" />
+                ) : (
+                  <div className="w-32 h-32 rounded-full bg-gradient-to-r from-primary-600 to-secondary-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
+                    {user?.username?.charAt(0) || 'U'}
+                  </div>
+                )}
+                <label className="absolute bottom-0 right-0 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full p-2 cursor-pointer shadow">
+                  <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const form = new FormData();
+                    form.append('avatar', file);
+                    const res = await fetch((process.env.REACT_APP_API_URL || 'http://localhost:5000/api') + '/users/avatar', {
+                      method: 'POST',
+                      headers: { Authorization: `Bearer ${localStorage.getItem('studyhive_token') || ''}` },
+                      body: form
+                    });
+                    const data = await res.json();
+                    if (data?.success) {
+                      window.location.reload();
+                    }
+                    e.target.value = '';
+                  }} />
+                  <svg className="w-5 h-5 text-gray-600 dark:text-gray-200" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V7.414A2 2 0 0017.414 6L13 1.586A2 2 0 0011.586 1H4zm6 3a5 5 0 110 10 5 5 0 010-10z"/></svg>
+                </label>
               </div>
               <div className="mt-4 sm:mt-0 flex-1">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -86,9 +109,9 @@ const Profile = () => {
                     <p className="text-gray-600 dark:text-gray-300">{formData.major}{formData.institution ? ` at ${formData.institution}` : ''}</p>
                     <div className="flex items-center mt-2 space-x-4">
                       {user?.gamification && (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
                           Level {user.gamification.level} • {user.gamification.points} pts
-                        </span>
+                      </span>
                       )}
                       <span className="text-sm text-gray-600 dark:text-gray-300">📍 {formData.location}</span>
                     </div>
@@ -140,12 +163,12 @@ const Profile = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
                         <input name="firstName" value={formData.firstName} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
-                      </div>
+                    </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
                         <input name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
-                      </div>
-                    </div>
+                </div>
+              </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bio</label>
                       <textarea
@@ -188,8 +211,8 @@ const Profile = () => {
                         <select name="availabilityHours" value={formData.availabilityHours} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                           {['Morning','Afternoon','Evening','Night','Flexible'].map(v => <option key={v} value={v}>{v}</option>)}
                         </select>
-                      </div>
-                      <div>
+                    </div>
+                    <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preferred Group Size</label>
                         <select name="preferredGroupSize" value={formData.preferredGroupSize} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                           {['Small (2-4)','Medium (5-8)','Large (9+)','Any'].map(v => <option key={v} value={v}>{v}</option>)}

@@ -7,7 +7,7 @@ const AITutor = () => {
   const [newMessage, setNewMessage] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('general');
   const [isTyping, setIsTyping] = useState(false);
-  const [isPremium, setIsPremium] = useState(false); // Mock premium status
+  const [isPremium, setIsPremium] = useState(!!user?.isPremium);
   const messagesEndRef = useRef(null);
 
   const subjects = [
@@ -63,8 +63,17 @@ How can I help you learn today?`,
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Mock AI responses based on subject and question
+  // Simple subject whitelist to keep AI educational
+  const isEducational = (text) => {
+    const banned = [/politics/i, /adult/i, /gambling/i, /violence/i];
+    return !banned.some(rx => rx.test(text));
+  };
+
+  // Mock educational responses
   const generateAIResponse = (question, subject) => {
+    if (!isEducational(question)) {
+      return "I can only help with educational topics. Please ask a study-related question.";
+    }
     const responses = {
       mathematics: [
         "Great math question! Let me break this down step by step for you.",
@@ -257,7 +266,17 @@ How can I help you learn today?`,
                   <p className="text-xs text-yellow-700 mb-3">
                     Unlock unlimited questions, advanced explanations, and more!
                   </p>
-                  <button className="w-full px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-400 text-yellow-900 text-sm font-medium rounded-lg hover:from-yellow-500 hover:to-orange-500 transition-colors">
+                  <button
+                    onClick={() => {
+                      const url = process.env.REACT_APP_CHECKOUT_URL || '#';
+                      if (url === '#') {
+                        alert('Payment is not configured yet.');
+                      } else {
+                        window.location.href = url;
+                      }
+                    }}
+                    className="w-full px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-400 text-yellow-900 text-sm font-medium rounded-lg hover:from-yellow-500 hover:to-orange-500 transition-colors"
+                  >
                     Upgrade Now
                   </button>
                 </div>
