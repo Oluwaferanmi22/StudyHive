@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import StudyGroupChat from '../../components/Chat/StudyGroupChat';
+import VideoCall from '../../components/Video/VideoCall';
 import { resourcesAPI } from '../../services/apiService';
 
 const StudyGroupDetail = () => {
@@ -96,11 +97,11 @@ const StudyGroupDetail = () => {
         {/* Tabs */}
         <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
           <nav className="-mb-px flex space-x-8">
-            {[
+            {[ 
               { id: 'overview', label: 'Overview' },
               { id: 'chat', label: 'Chat' },
+              { id: 'video', label: 'Video' },
               { id: 'resources', label: 'Resources' },
-              // Future: members, sessions
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -140,6 +141,12 @@ const StudyGroupDetail = () => {
             {activeTab === 'chat' && (
               <div className="h-[600px]">
                 <StudyGroupChat groupId={studyGroup.id} groupName={studyGroup.name} />
+              </div>
+            )}
+
+            {activeTab === 'video' && (
+              <div className="h-[600px] bg-white dark:bg-gray-800 rounded-xl shadow-sm p-2">
+                <VideoCall roomName={`hive-${studyGroup.id}`} displayName={"Guest"} />
               </div>
             )}
 

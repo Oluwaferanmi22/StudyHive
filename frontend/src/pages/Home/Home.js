@@ -1,19 +1,19 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import ApiHealthCheck from '../../components/Common/ApiHealthCheck';
+// import ApiHealthCheck from '../../components/Common/ApiHealthCheck';
 
 const Home = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       {/* Hero Section */}
       <section className="pt-24 pb-16 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div>
-            <h1 className="text-4xl md:text-6xl font-extrabold leading-tight">
+            <h1 className="text-4xl md:text-6xl font-extrabold leading-tight text-gray-900 dark:text-gray-100">
               Connect. Learn. Grow.
               <span className="block bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">Together in StudyHive</span>
             </h1>
-            <p className="mt-6 text-lg text-gray-600 max-w-xl">
+            <p className="mt-6 text-lg text-gray-600 dark:text-gray-300 max-w-xl">
               Join focused study groups, share resources, ask questions, and collaborate in real time. Study smarter with the hive.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
@@ -25,7 +25,7 @@ const Home = () => {
               </Link>
               <Link
                 to="/study-groups"
-                className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-lg text-primary-700 bg-white hover:bg-gray-50"
+                className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 dark:border-gray-600 text-base font-medium rounded-lg text-primary-700 dark:text-white bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Explore Hives
               </Link>
@@ -42,10 +42,10 @@ const Home = () => {
               }, {
                 icon: '🏆', title: 'Gamification', desc: 'Earn points, badges and climb leaderboards.'
               }].map((f, i) => (
-                <div key={i} className="bg-white/70 backdrop-blur shadow-sm rounded-xl p-5 border border-gray-100">
+                <div key={i} className="bg-white/70 dark:bg-gray-800/80 backdrop-blur shadow-sm rounded-xl p-5 border border-gray-100 dark:border-gray-700">
                   <div className="text-2xl">{f.icon}</div>
-                  <h3 className="mt-2 font-semibold text-gray-900">{f.title}</h3>
-                  <p className="mt-1 text-sm text-gray-600">{f.desc}</p>
+                  <h3 className="mt-2 font-semibold text-gray-900 dark:text-gray-100">{f.title}</h3>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{f.desc}</p>
                 </div>
               ))}
             </div>
@@ -55,10 +55,10 @@ const Home = () => {
           <div className="hidden md:block">
             <div className="relative">
               <div className="absolute -inset-4 bg-gradient-to-r from-primary-200 to-secondary-200 rounded-3xl blur-2xl opacity-60"></div>
-              <div className="relative bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
+              <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 border border-gray-100 dark:border-gray-700">
                 <div className="grid grid-cols-3 gap-4">
                   {Array.from({ length: 9 }).map((_, i) => (
-                    <div key={i} className="h-20 rounded-xl bg-gradient-to-br from-primary-50 to-secondary-50 border border-gray-100"></div>
+                    <div key={i} className="h-20 rounded-xl bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-gray-700 dark:to-gray-700 border border-gray-100 dark:border-gray-700"></div>
                   ))}
                 </div>
               </div>

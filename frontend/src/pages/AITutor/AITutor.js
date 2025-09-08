@@ -206,7 +206,7 @@ How can I help you learn today?`,
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -221,14 +221,14 @@ How can I help you learn today?`,
               </span>
             )}
           </div>
-          <p className="text-gray-600">Your personal AI tutor available 24/7 to help with any subject</p>
+          <p className="text-gray-600 dark:text-gray-300">Your personal AI tutor available 24/7 to help with any subject</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Subject Selection Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
-              <h3 className="font-semibold text-gray-900 mb-4">Select Subject</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 sticky top-24">
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Select Subject</h3>
               <div className="space-y-2">
                 {subjects.map((subject) => (
                   <button
@@ -244,7 +244,7 @@ How can I help you learn today?`,
                       <span className="text-lg mr-3">{subject.icon}</span>
                       <div>
                         <div className="font-medium">{subject.name}</div>
-                        <div className="text-xs text-gray-500">{subject.description}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{subject.description}</div>
                       </div>
                     </div>
                   </button>
@@ -267,17 +267,17 @@ How can I help you learn today?`,
 
           {/* Chat Interface */}
           <div className="lg:col-span-3">
-            <div className="bg-white rounded-xl shadow-sm flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
               {/* Chat Header */}
-              <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-xl">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium">
                       🤖
                     </div>
                     <div className="ml-3">
-                      <h3 className="font-semibold text-gray-900">AI Study Assistant</h3>
-                      <p className="text-sm text-gray-600">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">AI Study Assistant</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
                         Currently helping with {subjects.find(s => s.id === selectedSubject)?.name}
                       </p>
                     </div>
@@ -292,7 +292,7 @@ How can I help you learn today?`,
               </div>
 
               {/* Messages Area */}
-              <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+              <div className="flex-1 p-4 overflow-y-auto bg-gray-50 dark:bg-gray-900">
                 {messages.map((message) => (
                   <MessageItem key={message.id} message={message} />
                 ))}
@@ -304,7 +304,7 @@ How can I help you learn today?`,
                         <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white">
                           🤖
                         </div>
-                        <div className="px-4 py-3 bg-white border border-gray-200 rounded-2xl">
+                        <div className="px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl">
                           <div className="flex items-center space-x-1">
                             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
                             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -320,14 +320,14 @@ How can I help you learn today?`,
               </div>
 
               {/* Input Area */}
-              <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-white rounded-b-xl">
+              <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-b-xl">
                 <div className="flex space-x-3">
                   <input
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder={`Ask about ${subjects.find(s => s.id === selectedSubject)?.name.toLowerCase()}...`}
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     disabled={isTyping}
                   />
                   <button
