@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import PaymentModal from '../../components/Common/PaymentModal';
 
 const AITutor = () => {
   const { user } = useAuth();
@@ -8,6 +9,7 @@ const AITutor = () => {
   const [selectedSubject, setSelectedSubject] = useState('general');
   const [isTyping, setIsTyping] = useState(false);
   const [isPremium, setIsPremium] = useState(!!user?.isPremium);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const messagesEndRef = useRef(null);
 
   const subjects = [
@@ -20,10 +22,13 @@ const AITutor = () => {
     { id: 'languages', name: 'Languages', icon: '🌍', description: 'Foreign Languages, Translation' }
   ];
 
-  const initialMessage = {
-    id: 1,
-    type: 'ai',
-    content: `Hello! I'm your AI Study Assistant. I'm here to help you with your studies across various subjects. 
+  // Initialize with welcome message
+  useEffect(() => {
+    if (messages.length === 0) {
+      const initialMessage = {
+        id: 1,
+        type: 'ai',
+        content: `Hello! I'm your AI Study Assistant. I'm here to help you with your studies across various subjects. 
 
 ${isPremium ? 
   `🎉 **Premium Features Available:**
@@ -44,16 +49,12 @@ ${isPremium ?
   - Priority support`}
 
 How can I help you learn today?`,
-    timestamp: new Date(),
-    subject: selectedSubject
-  };
-
-  // Initialize with welcome message
-  useEffect(() => {
-    if (messages.length === 0) {
+        timestamp: new Date(),
+        subject: selectedSubject
+      };
       setMessages([initialMessage]);
     }
-  }, []);
+  }, [isPremium, selectedSubject, messages.length]);
 
   useEffect(() => {
     scrollToBottom();
@@ -267,14 +268,7 @@ How can I help you learn today?`,
                     Unlock unlimited questions, advanced explanations, and more!
                   </p>
                   <button
-                    onClick={() => {
-                      const url = process.env.REACT_APP_CHECKOUT_URL || '#';
-                      if (url === '#') {
-                        alert('Payment is not configured yet.');
-                      } else {
-                        window.location.href = url;
-                      }
-                    }}
+                    onClick={() => setShowPaymentModal(true)}
                     className="w-full px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-400 text-yellow-900 text-sm font-medium rounded-lg hover:from-yellow-500 hover:to-orange-500 transition-colors"
                   >
                     Upgrade Now
@@ -373,6 +367,15 @@ How can I help you learn today?`,
           </div>
         </div>
       </div>
+
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onSuccess={() => {
+          setIsPremium(true);
+          setShowPaymentModal(false);
+        }}
+      />
     </div>
   );
 };

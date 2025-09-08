@@ -78,9 +78,9 @@ const Profile = () => {
                 {user?.profile?.avatar ? (
                   <img src={`/${user.profile.avatar}`} alt="Avatar" className="w-32 h-32 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-lg" />
                 ) : (
-                  <div className="w-32 h-32 rounded-full bg-gradient-to-r from-primary-600 to-secondary-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
+                <div className="w-32 h-32 rounded-full bg-gradient-to-r from-primary-600 to-secondary-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
                     {user?.username?.charAt(0) || 'U'}
-                  </div>
+                </div>
                 )}
                 <label className="absolute bottom-0 right-0 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full p-2 cursor-pointer shadow">
                   <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
