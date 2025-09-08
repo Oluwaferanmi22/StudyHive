@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Profile = () => {
@@ -6,13 +6,16 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    bio: 'Passionate about collaborative learning and helping others succeed in their studies.',
-    studyInterests: 'Mathematics, Computer Science, Biology',
-    location: 'San Francisco, CA',
-    university: 'University of California',
-    major: 'Computer Science'
+    firstName: user?.profile?.firstName || '',
+    lastName: user?.profile?.lastName || '',
+    bio: user?.profile?.bio || '',
+    institution: user?.profile?.institution || '',
+    studyYear: user?.profile?.studyYear || 'Other',
+    major: user?.profile?.major || '',
+    studySubjects: (user?.preferences?.studySubjects || []).join(', '),
+    studyGoals: (user?.preferences?.studyGoals || []).join(', '),
+    availabilityHours: user?.preferences?.availabilityHours || 'Flexible',
+    preferredGroupSize: user?.preferences?.preferredGroupSize || 'Any'
   });
 
   const handleInputChange = (e) => {
@@ -22,36 +25,46 @@ const Profile = () => {
     });
   };
 
-  const handleSave = () => {
-    // Here you would typically make an API call to update the user profile
-    console.log('Saving profile:', formData);
-    setIsEditing(false);
+  const { updateProfile } = useAuth();
+
+  useEffect(() => {
+    // Sync when user changes
+    setFormData({
+      firstName: user?.profile?.firstName || '',
+      lastName: user?.profile?.lastName || '',
+      bio: user?.profile?.bio || '',
+      institution: user?.profile?.institution || '',
+      studyYear: user?.profile?.studyYear || 'Other',
+      major: user?.profile?.major || '',
+      studySubjects: (user?.preferences?.studySubjects || []).join(', '),
+      studyGoals: (user?.preferences?.studyGoals || []).join(', '),
+      availabilityHours: user?.preferences?.availabilityHours || 'Flexible',
+      preferredGroupSize: user?.preferences?.preferredGroupSize || 'Any'
+    });
+  }, [user]);
+
+  const handleSave = async () => {
+    const payload = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      bio: formData.bio,
+      institution: formData.institution,
+      studyYear: formData.studyYear,
+      major: formData.major,
+      studySubjects: formData.studySubjects
+        ? formData.studySubjects.split(',').map(s => s.trim()).filter(Boolean)
+        : [],
+      studyGoals: formData.studyGoals
+        ? formData.studyGoals.split(',').map(s => s.trim()).filter(Boolean)
+        : [],
+      availabilityHours: formData.availabilityHours,
+      preferredGroupSize: formData.preferredGroupSize
+    };
+    const res = await updateProfile(payload);
+    if (res?.success) setIsEditing(false);
   };
 
-  // Mock data for achievements and activity
-  const badges = [
-    { id: 1, name: 'Helper', description: 'Helped 10+ students', icon: '🤝', earned: '2 weeks ago', color: 'bg-blue-500' },
-    { id: 2, name: 'Contributor', description: 'Shared 25+ resources', icon: '📚', earned: '1 month ago', color: 'bg-green-500' },
-    { id: 3, name: 'Consistent', description: '30-day study streak', icon: '🔥', earned: '3 days ago', color: 'bg-orange-500' },
-    { id: 4, name: 'Mentor', description: 'Led 5+ study sessions', icon: '👨‍🏫', earned: '1 week ago', color: 'bg-purple-500' }
-  ];
-
-  const recentActivity = [
-    { id: 1, type: 'answered', text: 'Answered a question in Mathematics 101', time: '2 hours ago' },
-    { id: 2, type: 'shared', text: 'Shared "Linear Algebra Notes" in Biology Exam Prep', time: '1 day ago' },
-    { id: 3, type: 'joined', text: 'Joined Programming Fundamentals group', time: '3 days ago' },
-    { id: 4, type: 'earned', text: 'Earned the "Consistent" badge', time: '3 days ago' },
-    { id: 5, type: 'created', text: 'Created a new study session for Physics', time: '1 week ago' }
-  ];
-
-  const studyStats = [
-    { label: 'Study Groups', value: user?.joinedGroups || 3, icon: '🐝' },
-    { label: 'Reputation Points', value: user?.reputation || 150, icon: '⭐' },
-    { label: 'Resources Shared', value: 25, icon: '📚' },
-    { label: 'Questions Answered', value: 42, icon: '💬' },
-    { label: 'Study Streak', value: '7 days', icon: '🔥' },
-    { label: 'Total Study Time', value: '68 hrs', icon: '⏱️' }
-  ];
+  // Removed demo badges, activity, and stats
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -69,12 +82,14 @@ const Profile = () => {
               <div className="mt-4 sm:mt-0 flex-1">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{user?.name}</h1>
-                    <p className="text-gray-600 dark:text-gray-300">{formData.major} at {formData.university}</p>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{user?.username}</h1>
+                    <p className="text-gray-600 dark:text-gray-300">{formData.major}{formData.institution ? ` at ${formData.institution}` : ''}</p>
                     <div className="flex items-center mt-2 space-x-4">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-                        {user?.badge || 'Helper'} • {user?.reputation || 150} pts
-                      </span>
+                      {user?.gamification && (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                          Level {user.gamification.level} • {user.gamification.points} pts
+                        </span>
+                      )}
                       <span className="text-sm text-gray-600 dark:text-gray-300">📍 {formData.location}</span>
                     </div>
                   </div>
@@ -95,8 +110,6 @@ const Profile = () => {
           <nav className="-mb-px flex space-x-8">
             {[
               { id: 'overview', label: 'Overview' },
-              { id: 'activity', label: 'Activity' },
-              { id: 'badges', label: 'Badges' },
               { id: 'settings', label: 'Settings' }
             ].map((tab) => (
               <button
@@ -117,26 +130,22 @@ const Profile = () => {
         {/* Tab Content */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Stats */}
+            {/* Bio and Preferences */}
             <div className="lg:col-span-2">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Study Statistics</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                  {studyStats.map((stat, index) => (
-                    <div key={index} className="text-center">
-                      <div className="text-2xl mb-2">{stat.icon}</div>
-                      <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stat.value}</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-300">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Bio and Interests */}
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">About</h2>
                 {isEditing ? (
                   <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
+                        <input name="firstName" value={formData.firstName} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+                        <input name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                      </div>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bio</label>
                       <textarea
@@ -147,15 +156,45 @@ const Profile = () => {
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       />
                     </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Institution</label>
+                        <input name="institution" value={formData.institution} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Study Year</label>
+                        <select name="studyYear" value={formData.studyYear} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                          {['Freshman','Sophomore','Junior','Senior','Graduate','Other'].map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                      </div>
+                    </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Study Interests</label>
-                      <input
-                        type="text"
-                        name="studyInterests"
-                        value={formData.studyInterests}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      />
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Major</label>
+                      <input name="major" value={formData.major} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Study Subjects (comma-separated)</label>
+                        <input name="studySubjects" value={formData.studySubjects} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Study Goals (comma-separated)</label>
+                        <input name="studyGoals" value={formData.studyGoals} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Availability</label>
+                        <select name="availabilityHours" value={formData.availabilityHours} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                          {['Morning','Afternoon','Evening','Night','Flexible'].map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preferred Group Size</label>
+                        <select name="preferredGroupSize" value={formData.preferredGroupSize} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                          {['Small (2-4)','Medium (5-8)','Large (9+)','Any'].map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                      </div>
                     </div>
                     <button
                       onClick={handleSave}
@@ -168,12 +207,12 @@ const Profile = () => {
                   <div className="space-y-4">
                     <div>
                       <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Bio</h3>
-                      <p className="text-gray-700 dark:text-gray-300">{formData.bio}</p>
+                      <p className="text-gray-700 dark:text-gray-300">{formData.bio || 'No bio yet.'}</p>
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Study Interests</h3>
                       <div className="flex flex-wrap gap-2">
-                        {formData.studyInterests.split(', ').map((interest, index) => (
+                        {(formData.studySubjects ? formData.studySubjects.split(',') : []).map((interest, index) => (
                           <span
                             key={index}
                             className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800"
@@ -186,59 +225,6 @@ const Profile = () => {
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div>
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Recent Activity</h2>
-                <div className="space-y-4">
-                  {recentActivity.slice(0, 5).map((activity) => (
-                    <div key={activity.id} className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 w-2 h-2 bg-primary-500 rounded-full mt-2"></div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-900 dark:text-gray-100">{activity.text}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{activity.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'activity' && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Activity History</h2>
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                  <div className="flex-shrink-0 w-3 h-3 bg-primary-500 rounded-full mt-1"></div>
-                  <div className="flex-1">
-                    <p className="text-gray-900 dark:text-gray-100">{activity.text}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'badges' && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Earned Badges</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {badges.map((badge) => (
-                <div key={badge.id} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6 text-center">
-                  <div className={`w-16 h-16 ${badge.color} rounded-full flex items-center justify-center text-2xl text-white mx-auto mb-4`}>
-                    {badge.icon}
-                  </div>
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">{badge.name}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{badge.description}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Earned {badge.earned}</p>
-                </div>
-              ))}
             </div>
           </div>
         )}
