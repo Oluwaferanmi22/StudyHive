@@ -242,3 +242,4 @@ const PaymentModal = ({ isOpen, onClose, onSuccess }) => {
 };
 
 export default PaymentModal;
+

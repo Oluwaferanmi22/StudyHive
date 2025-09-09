@@ -25,10 +25,10 @@ const AITutor = () => {
   // Initialize with welcome message
   useEffect(() => {
     if (messages.length === 0) {
-      const initialMessage = {
-        id: 1,
-        type: 'ai',
-        content: `Hello! I'm your AI Study Assistant. I'm here to help you with your studies across various subjects. 
+  const initialMessage = {
+    id: 1,
+    type: 'ai',
+    content: `Hello! I'm your AI Study Assistant. I'm here to help you with your studies across various subjects. 
 
 ${isPremium ? 
   `🎉 **Premium Features Available:**
@@ -49,9 +49,9 @@ ${isPremium ?
   - Priority support`}
 
 How can I help you learn today?`,
-        timestamp: new Date(),
-        subject: selectedSubject
-      };
+    timestamp: new Date(),
+    subject: selectedSubject
+  };
       setMessages([initialMessage]);
     }
   }, [isPremium, selectedSubject, messages.length]);
