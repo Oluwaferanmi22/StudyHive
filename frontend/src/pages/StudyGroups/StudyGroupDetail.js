@@ -174,7 +174,7 @@ const StudyGroupDetail = () => {
                       </div>
                       <div className="flex items-center space-x-4">
                         <a
-                          href={`/${resource.content?.file?.filePath}`}
+                          href={`${(process.env.REACT_APP_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '')}/${resource.content?.file?.filePath}`}
                           target="_blank"
                           rel="noreferrer"
                           className="px-3 py-1 bg-primary-600 text-white text-sm rounded hover:bg-primary-700 transition-colors"

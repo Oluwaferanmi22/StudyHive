@@ -77,6 +77,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'PDF file is required' });
     }
 
+    const webPath = (req.file.path || '').replace(/\\/g, '/');
     const resource = await Resource.create({
       title: title || req.file.originalname,
       description,
@@ -84,7 +85,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       content: {
         file: {
           fileName: req.file.originalname,
-          filePath: req.file.path,
+          filePath: webPath,
           fileSize: req.file.size,
           mimeType: req.file.mimetype
         }
