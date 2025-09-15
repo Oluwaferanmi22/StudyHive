@@ -50,6 +50,7 @@ export const TimerProvider = ({ children }) => {
     const savedSettings = localStorage.getItem('studyhive_timer_settings');
     const savedStats = localStorage.getItem('studyhive_timer_stats');
     const savedTodayStats = localStorage.getItem('studyhive_timer_today');
+    const savedCurrentTask = localStorage.getItem('studyhive_timer_current_task');
 
     if (savedSettings) {
       try {
@@ -88,6 +89,15 @@ export const TimerProvider = ({ children }) => {
         }
       } catch (error) {
         console.error('Error loading today\'s timer stats:', error);
+      }
+    }
+
+    if (savedCurrentTask) {
+      try {
+        const parsed = JSON.parse(savedCurrentTask);
+        setCurrentTask(parsed.task || '');
+      } catch (error) {
+        // ignore bad storage
       }
     }
   }, []);
@@ -272,6 +282,14 @@ export const TimerProvider = ({ children }) => {
 
   const addTask = (task) => {
     setCurrentTask(task);
+    try {
+      localStorage.setItem('studyhive_timer_current_task', JSON.stringify({ task }));
+    } catch {}
+  };
+
+  const clearCurrentTask = () => {
+    setCurrentTask('');
+    localStorage.removeItem('studyhive_timer_current_task');
   };
 
   const clearCompletedTasks = () => {
@@ -311,6 +329,7 @@ export const TimerProvider = ({ children }) => {
     switchMode,
     updateSettings,
     addTask,
+    clearCurrentTask,
     clearCompletedTasks,
     requestNotificationPermission,
 

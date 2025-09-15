@@ -19,6 +19,7 @@ const StudyTimer = () => {
     reset,
     switchMode,
     addTask,
+    clearCurrentTask,
     formatTime,
     getProgress,
     TIMER_MODES,
@@ -247,7 +248,22 @@ const StudyTimer = () => {
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
                   📝 Current Task
                 </h3>
-                
+
+                {currentTask ? (
+                  <div className="mb-3 flex items-center justify-between bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-2">
+                    <span className="text-sm font-medium text-gray-800 dark:text-white truncate mr-3">{currentTask}</span>
+                    <button
+                      type="button"
+                      onClick={() => clearCurrentTask()}
+                      className="text-xs px-2 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 rounded-md text-gray-700 dark:text-gray-200"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">No task set</p>
+                )}
+
                 <form onSubmit={handleAddTask} className="space-y-3">
                   <input
                     type="text"

@@ -52,6 +52,12 @@ const Navbar = () => {
                   🤖 AI Tutor
                 </Link>
                 <Link
+                  to="/study-timer"
+                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors"
+                >
+                  ⏱️ Study Time
+                </Link>
+                <Link
                   to="/upgrade"
                   className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 px-3 py-2 text-sm font-medium transition-colors"
                 >
@@ -156,6 +162,13 @@ const Navbar = () => {
                     onClick={() => setIsMenuOpen(false)}
                   >
                     AI Tutor
+                  </Link>
+                  <Link
+                    to="/study-timer"
+                    className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Study Time
                   </Link>
                   <Link
                     to="/upgrade"

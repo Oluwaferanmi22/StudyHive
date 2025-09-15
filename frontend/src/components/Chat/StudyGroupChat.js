@@ -256,7 +256,8 @@ const StudyGroupChat = ({ groupId, groupName }) => {
       };
 
       recorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+        const blob = new Blob(chunks, { type: mimeType });
         await sendVoiceMessage(blob);
         setAudioChunks([]);
       };
@@ -280,7 +281,7 @@ const StudyGroupChat = ({ groupId, groupName }) => {
     try {
       setIsSending(true);
       const formData = new FormData();
-      formData.append('file', audioBlob, 'voice-message.webm'); // Changed from 'audio' to 'file'
+      formData.append('file', audioBlob, 'voice-message.webm');
       formData.append('hiveId', groupId);
       formData.append('content', '[Voice Message]');
 

@@ -113,55 +113,73 @@ const AITutor = () => {
     if (!newMessage.trim()) return;
 
     try {
-      // Track usage with backend
-      const usageResponse = await paymentsAPI.trackAITutorUsage();
-      
-      if (!usageResponse.success) {
-        // User has reached daily limit
-        const limitMessage = {
-          id: Date.now(),
-          type: 'ai',
-          content: "🚫 **Daily Limit Reached**\n\nYou've reached your daily limit of 20 questions on the free plan.\n\n💎 **Upgrade to Premium** for unlimited questions and advanced features!\n\n📅 Your limit will reset tomorrow.",
-          timestamp: new Date(),
-          subject: selectedSubject
-        };
-        setMessages(prev => [...prev, limitMessage]);
-        return;
+      // Track usage with backend (fallback to local if request fails)
+      let allow = true;
+      try {
+        const usageResponse = await paymentsAPI.trackAITutorUsage();
+        if (!usageResponse.success) {
+          allow = false;
+        } else if (usageResponse?.data) {
+          setUsage(prev => ({
+            ...prev,
+            daily: prev.daily + 1,
+            total: prev.total + 1,
+            remainingToday: usageResponse.data.remainingToday === 'unlimited'
+              ? prev.remainingToday
+              : usageResponse.data.remainingToday
+          }));
+        }
+      } catch (e) {
+        // Network or server error -> use local fallback limit
+        if (!isPremium && usage.remainingToday <= 0) {
+          allow = false;
+        } else {
+          setUsage(prev => ({
+            ...prev,
+            daily: prev.daily + 1,
+            total: prev.total + 1,
+            remainingToday: Math.max(0, prev.remainingToday - 1)
+          }));
+        }
       }
 
-      // Update usage state
-      setUsage(prev => ({
-        ...prev,
-        daily: prev.daily + 1,
-        total: prev.total + 1,
-        remainingToday: prev.remainingToday - 1
-      }));
-
-      const userMessage = {
+      if (!allow) {
+      const limitMessage = {
         id: Date.now(),
-        type: 'user',
-        content: newMessage,
+        type: 'ai',
+          content: "🚫 **Daily Limit Reached**\n\nYou've reached your daily limit of 20 questions on the free plan.\n\n💎 **Upgrade to Premium** for unlimited questions and advanced features!\n\n📅 Your limit will reset tomorrow.",
+        timestamp: new Date(),
+        subject: selectedSubject
+      };
+      setMessages(prev => [...prev, limitMessage]);
+      return;
+    }
+
+    const userMessage = {
+      id: Date.now(),
+      type: 'user',
+      content: newMessage,
+      timestamp: new Date(),
+      subject: selectedSubject
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setNewMessage('');
+    setIsTyping(true);
+
+    // Simulate AI thinking delay
+    setTimeout(() => {
+      const aiResponse = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: generateAIResponse(newMessage, selectedSubject),
         timestamp: new Date(),
         subject: selectedSubject
       };
 
-      setMessages(prev => [...prev, userMessage]);
-      setNewMessage('');
-      setIsTyping(true);
-
-      // Simulate AI thinking delay
-      setTimeout(() => {
-        const aiResponse = {
-          id: Date.now() + 1,
-          type: 'ai',
-          content: generateAIResponse(newMessage, selectedSubject),
-          timestamp: new Date(),
-          subject: selectedSubject
-        };
-
-        setMessages(prev => [...prev, aiResponse]);
-        setIsTyping(false);
-      }, 1500 + Math.random() * 1000);
+      setMessages(prev => [...prev, aiResponse]);
+      setIsTyping(false);
+    }, 1500 + Math.random() * 1000);
 
     } catch (error) {
       console.error('Error sending message:', error);
