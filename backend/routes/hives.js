@@ -18,7 +18,11 @@ const {
   getHiveMembers,
   getHiveStats,
   searchHives,
-  getJoinRequests
+  getJoinRequests,
+  generateShareableLink,
+  updateShareableLinkSettings,
+  disableShareableLink,
+  joinHiveByLink
 } = require('../controllers/hiveController');
 
 // Validation middleware
@@ -180,5 +184,25 @@ router.get('/:id/join-requests', protect, getJoinRequests);
 // @desc    Manage join request (approve/reject)
 // @access  Private (Admin/Moderator only)
 router.post('/:id/join-requests/:requestId', protect, validateJoinRequest, handleValidationErrors, manageJoinRequest);
+
+// @route   POST /api/hives/:id/share-link
+// @desc    Generate shareable link for hive
+// @access  Private (Creator/Admin only)
+router.post('/:id/share-link', protect, generateShareableLink);
+
+// @route   PUT /api/hives/:id/share-link/settings
+// @desc    Update shareable link settings
+// @access  Private (Creator/Admin only)
+router.put('/:id/share-link/settings', protect, updateShareableLinkSettings);
+
+// @route   DELETE /api/hives/:id/share-link
+// @desc    Disable shareable link
+// @access  Private (Creator/Admin only)
+router.delete('/:id/share-link', protect, disableShareableLink);
+
+// @route   POST /api/hives/join/:linkId
+// @desc    Join hive via shareable link
+// @access  Public
+router.post('/join/:linkId', joinHiveByLink);
 
 module.exports = router;

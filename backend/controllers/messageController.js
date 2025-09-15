@@ -3,6 +3,13 @@ const StudyHive = require('../models/StudyHive');
 const User = require('../models/User');
 const multer = require('multer');
 const path = require('path');
+let OpenAIClient = null;
+try {
+  // Lazy/optional import so the app still runs without the package
+  OpenAIClient = require('openai');
+} catch (e) {
+  OpenAIClient = null;
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -35,6 +42,97 @@ const upload = multer({
   },
   fileFilter
 });
+
+// Simple AI response generator
+const generateSimpleAIResponse = (userMessage) => {
+  const text = (userMessage || '').trim();
+  if (!text) return 'Please provide a question.';
+
+  // Normalize
+  const q = text.toLowerCase().replace(/[?.!]/g, '').trim();
+
+  // Small academic dictionary for crisp definitions
+  const defs = {
+    noun: 'A noun is a word that names a person, place, thing, or idea.',
+    nouns: 'A noun is a word that names a person, place, thing, or idea.',
+    verb: 'A verb is a word that expresses an action, occurrence, or state of being.',
+    verbs: 'A verb is a word that expresses an action, occurrence, or state of being.',
+    adjective: 'An adjective is a word that describes or modifies a noun or pronoun.',
+    adjectives: 'An adjective is a word that describes or modifies a noun or pronoun.',
+    adverb: 'An adverb is a word that modifies a verb, adjective, or another adverb, often showing manner, time, place, or degree.',
+    pronoun: 'A pronoun is a word that replaces a noun (e.g., he, she, it, they).',
+    preposition: 'A preposition shows the relationship between a noun/pronoun and another word (e.g., in, on, at, between).',
+    conjunction: 'A conjunction connects words, phrases, or clauses (e.g., and, but, because).',
+    interjection: 'An interjection is a short exclamation expressing emotion (e.g., wow!, oh!, hey!).',
+    sentence: 'A sentence is a group of words that expresses a complete thought and has a subject and predicate.',
+    paragraph: 'A paragraph is a group of related sentences that develop a single main idea.',
+    photosynthesis: 'Photosynthesis is the process by which plants use light, water, and carbon dioxide to make glucose and oxygen.',
+    atom: 'An atom is the smallest unit of an element that retains the element’s chemical properties.',
+    mitosis: 'Mitosis is the cell division process that produces two genetically identical daughter cells.',
+    osmosis: 'Osmosis is the movement of water across a semipermeable membrane from low solute concentration to high.',
+    ecosystem: 'An ecosystem is a community of organisms interacting with each other and their physical environment.',
+    democracy: 'Democracy is a system of government in which power is vested in the people, typically via elected representatives.',
+    algorithm: 'An algorithm is a step-by-step procedure for solving a problem or performing a computation.',
+    variable: 'A variable is a named storage location that holds a value which can change during program execution.',
+    function: 'A function is a reusable block of code that performs a specific task and can return a value.',
+    array: 'An array is an ordered collection of elements stored at contiguous memory locations.',
+    loop: 'A loop is a control structure that repeats a block of code while a condition remains true.',
+    class: 'A class is a blueprint for creating objects that encapsulate data and behavior.',
+    object: 'An object is an instance of a class containing data (properties) and behavior (methods).',
+    fraction: 'A fraction represents a part of a whole and is written as one integer over another, a/b.',
+    prime: 'A prime number is an integer greater than 1 that has no positive divisors other than 1 and itself.'
+  };
+
+  // Pattern: "what is/are X" or "define X"
+  const patterns = ['what is ', 'what are ', 'define '];
+  for (const p of patterns) {
+    if (q.startsWith(p)) {
+      let key = q.slice(p.length).trim();
+      // Remove leading articles
+      key = key.replace(/^(a|an|the)\s+/i, '').trim();
+      if (defs[key]) return defs[key];
+      // Try simple singularization for plural nouns ending with 's'
+      if (key.endsWith('s') && defs[key.slice(0, -1)]) return defs[key.slice(0, -1)];
+      return `Here’s a concise answer: ${text}`; // fallback, still direct
+    }
+  }
+
+  // Default: concise echo encouraging specificity, without fluff
+  return 'Please provide a specific “what is/define …” question for a precise one‑line answer.';
+};
+
+// OpenAI response generator with safe fallback
+const generateAIResponse = async (userMessage) => {
+  try {
+    if (!process.env.OPENAI_API_KEY || !OpenAIClient) {
+      return { content: generateSimpleAIResponse(userMessage), meta: { provider: 'builtin', model: 'study-hive-ai' } };
+    }
+
+    const openai = new OpenAIClient({ apiKey: process.env.OPENAI_API_KEY });
+    const prompt = `Provide a concise, accurate, educational answer. If the user asks for a definition, reply in one short sentence.
+Question: ${userMessage}`;
+
+    // Prefer chat completion if available
+    const completion = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: 'You are a helpful study assistant. Be concise and factual.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.2,
+      max_tokens: 200
+    });
+
+    const content = (completion.choices?.[0]?.message?.content || '').trim();
+    if (!content) {
+      return { content: generateSimpleAIResponse(userMessage), meta: { provider: 'builtin', model: 'study-hive-ai' } };
+    }
+    return { content, meta: { provider: 'openai', model: completion.model || (process.env.OPENAI_MODEL || 'gpt-3.5-turbo') } };
+  } catch (err) {
+    // Fallback on any error
+    return { content: generateSimpleAIResponse(userMessage), meta: { provider: 'builtin', model: 'study-hive-ai' } };
+  }
+};
 
 // @desc    Get messages for a hive
 // @route   GET /api/messages/hive/:hiveId
@@ -155,14 +253,24 @@ const sendMessage = async (req, res) => {
       replyTo = null,
       mentions = [],
       poll = null,
-      codeLanguage = null
+      codeLanguage = null,
+      voiceNote = null,
+      aiResponse = null
     } = req.body;
 
     // Validate required fields
-    if (!content || !hiveId) {
+    if (!hiveId) {
       return res.status(400).json({
         success: false,
-        message: 'Content and hive ID are required'
+        message: 'Hive ID is required'
+      });
+    }
+
+    // For text messages, content is required
+    if (messageType === 'text' && !content) {
+      return res.status(400).json({
+        success: false,
+        message: 'Content is required for text messages'
       });
     }
 
@@ -195,7 +303,7 @@ const sendMessage = async (req, res) => {
 
     // Create message data
     const messageData = {
-      content,
+      content: content || '',
       author: req.user.id,
       hive: hiveId,
       messageType,
@@ -203,6 +311,26 @@ const sendMessage = async (req, res) => {
       mentions: Array.isArray(mentions) ? mentions : [],
       codeLanguage
     };
+
+    // Add voice note data if it's a voice message
+    if (messageType === 'voice' && voiceNote) {
+      messageData.voiceNote = {
+        duration: voiceNote.duration || 0,
+        waveform: voiceNote.waveform || [],
+        transcribedText: voiceNote.transcribedText || null
+      };
+    }
+
+    // Add AI response data if it's an AI message
+    if (messageType === 'ai') {
+      const result = await generateAIResponse(content);
+      messageData.content = result.content;
+      messageData.aiResponse = {
+        model: result.meta?.model || 'study-hive-ai',
+        confidence: 0.9,
+        context: result.meta?.provider || 'group-chat'
+      };
+    }
 
     // Add poll data if it's a poll message
     if (messageType === 'poll' && poll) {
@@ -233,7 +361,36 @@ const sendMessage = async (req, res) => {
         fileSize: file.size,
         uploadedAt: new Date()
       }));
-      messageData.messageType = 'file';
+      
+      // Determine message type based on file type
+      const file = req.files[0];
+      if (file.mimetype.startsWith('image/')) {
+        messageData.messageType = 'image';
+      } else if (file.mimetype.startsWith('audio/')) {
+        messageData.messageType = 'voice';
+      } else {
+        messageData.messageType = 'file';
+      }
+    }
+
+    // Handle single file upload (for image/voice messages)
+    if (req.file) {
+      messageData.attachments = [{
+        fileName: req.file.originalname,
+        filePath: req.file.path,
+        fileType: req.file.mimetype,
+        fileSize: req.file.size,
+        uploadedAt: new Date()
+      }];
+      
+      // Determine message type based on file type
+      if (req.file.mimetype.startsWith('image/')) {
+        messageData.messageType = 'image';
+        messageData.content = messageData.content || '[Image]';
+      } else if (req.file.mimetype.startsWith('audio/')) {
+        messageData.messageType = 'voice';
+        messageData.content = messageData.content || '[Voice Message]';
+      }
     }
 
     // Create the message
@@ -863,6 +1020,26 @@ const getMessageStats = async (req, res) => {
 // @access  Private
 const uploadFile = upload.array('files', 5); // Allow up to 5 files
 
+// Single file upload for images and voice notes
+const uploadSingleFile = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow images and audio files
+    const allowedTypes = /jpeg|jpg|png|gif|webm|mp3|wav|ogg/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images and audio files are allowed.'));
+    }
+  }
+}).single('file');
+
 // @desc    Get unread message count for user
 // @route   GET /api/messages/unread-count
 // @access  Private
@@ -980,6 +1157,7 @@ module.exports = {
   getPinnedMessages,
   getMessageStats,
   uploadFile,
+  uploadSingleFile,
   getUnreadCount,
   markMessagesAsRead
 };

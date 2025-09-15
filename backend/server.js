@@ -55,6 +55,7 @@ app.use('/api/hives', require('./routes/hives'));
 app.use('/api/resources', require('./routes/resources'));
 app.use('/api/questions', require('./routes/questions'));
 app.use('/api/messages', require('./routes/messages'));
+app.use('/api/payments', require('./routes/payments'));
 
 // Make Socket.IO available globally for other modules
 app.set('io', io);

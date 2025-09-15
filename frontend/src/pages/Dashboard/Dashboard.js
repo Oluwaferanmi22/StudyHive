@@ -5,67 +5,10 @@ import { useAuth } from '../../contexts/AuthContext';
 const Dashboard = () => {
   const { user } = useAuth();
 
-  // Mock data for demo
-  const studyGroups = [
-    {
-      id: 1,
-      name: 'Mathematics 101',
-      subject: 'Mathematics',
-      members: 12,
-      lastActivity: '2 hours ago',
-      unreadMessages: 5,
-      color: 'from-blue-500 to-blue-600'
-    },
-    {
-      id: 2,
-      name: 'Biology Exam Prep',
-      subject: 'Biology',
-      members: 8,
-      lastActivity: '4 hours ago',
-      unreadMessages: 0,
-      color: 'from-green-500 to-green-600'
-    },
-    {
-      id: 3,
-      name: 'Programming Fundamentals',
-      subject: 'Computer Science',
-      members: 15,
-      lastActivity: '1 day ago',
-      unreadMessages: 2,
-      color: 'from-purple-500 to-purple-600'
-    }
-  ];
+  // Replace demo cards with an empty state prompting real navigation
+  const studyGroups = [];
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'message',
-      text: 'New message in Mathematics 101',
-      time: '30 minutes ago',
-      icon: '💬'
-    },
-    {
-      id: 2,
-      type: 'resource',
-      text: 'Sarah shared a new note in Biology Exam Prep',
-      time: '1 hour ago',
-      icon: '📚'
-    },
-    {
-      id: 3,
-      type: 'badge',
-      text: 'You earned the "Helpful" badge!',
-      time: '2 hours ago',
-      icon: '🏆'
-    },
-    {
-      id: 4,
-      type: 'join',
-      text: 'Alex joined Programming Fundamentals',
-      time: '3 hours ago',
-      icon: '👋'
-    }
-  ];
+  const recentActivity = [];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -144,6 +87,11 @@ const Dashboard = () => {
               </div>
               <div className="p-6">
                 <div className="space-y-4">
+                  {studyGroups.length === 0 && (
+                    <div className="p-6 text-center text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                      You have no groups yet. Browse groups to join or create your own.
+                    </div>
+                  )}
                   {studyGroups.map((group) => (
                     <div
                       key={group.id}
@@ -195,6 +143,11 @@ const Dashboard = () => {
               </div>
               <div className="p-6">
                 <div className="space-y-4">
+                  {recentActivity.length === 0 && (
+                    <div className="p-6 text-center text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                      No recent activity yet.
+                    </div>
+                  )}
                   {recentActivity.map((activity) => (
                     <div key={activity.id} className="flex items-start space-x-3">
                       <div className="flex-shrink-0">

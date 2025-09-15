@@ -206,7 +206,7 @@ const StudyGroups = () => {
             <button className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors">
               💬 Preview
             </button>
-            <button className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors">
+            <button className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
               Join Hive
             </button>
           </div>
@@ -218,14 +218,14 @@ const StudyGroups = () => {
   // Helper function to get a consistent color for each group
   const getGroupColor = (name) => {
     const colors = [
-      'from-blue-500 to-blue-600',
-      'from-green-500 to-green-600',
-      'from-purple-500 to-purple-600',
-      'from-red-500 to-red-600',
-      'from-yellow-500 to-yellow-600',
-      'from-indigo-500 to-indigo-600',
-      'from-pink-500 to-pink-600',
-      'from-teal-500 to-teal-600'
+      'bg-blue-500',
+      'bg-green-500',
+      'bg-purple-500',
+      'bg-red-500',
+      'bg-yellow-500',
+      'bg-indigo-500',
+      'bg-pink-500',
+      'bg-teal-500'
     ];
     const hash = name.split('').reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0);
@@ -254,7 +254,7 @@ const StudyGroups = () => {
         <div className="p-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-3">
-              <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${getGroupColor(group.name)} flex items-center justify-center text-white font-semibold`}>
+              <div className={`w-12 h-12 rounded-lg ${getGroupColor(group.name)} flex items-center justify-center text-white font-semibold`}>
                 {group.name.charAt(0).toUpperCase()}
               </div>
               <div>
@@ -300,7 +300,7 @@ const StudyGroups = () => {
               {isMember ? (
                 <Link
                   to={`/study-groups/${group._id}`}
-                  className="px-4 py-2 bg-gradient-to-r from-primary-600 to-secondary-600 text-white text-sm font-medium rounded-lg hover:from-primary-700 hover:to-secondary-700 transition-colors"
+                  className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   💬 Open Chat
                 </Link>
@@ -315,7 +315,7 @@ const StudyGroups = () => {
                   <button 
                     onClick={() => handleJoinHive(group._id)}
                     disabled={isJoining[group._id] || memberCount >= maxMembers}
-                    className="px-4 py-2 bg-gradient-to-r from-primary-600 to-secondary-600 text-white text-sm font-medium rounded-lg hover:from-primary-700 hover:to-secondary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                    className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
                   >
                     {isJoining[group._id] ? (
                       <>
@@ -470,7 +470,7 @@ const StudyGroups = () => {
             <div className="text-4xl mb-4">🐝</div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Your Study Groups</h3>
             <p className="text-gray-600 mb-6">You'll see all your joined groups here.</p>
-            <button className="px-4 py-2 bg-gradient-to-r from-primary-600 to-secondary-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-secondary-700 transition-colors">
+            <button className="px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors">
               Browse Groups to Join
             </button>
           </div>
@@ -525,7 +525,7 @@ const StudyGroups = () => {
                     </button>
                     <button 
                       onClick={() => setActiveTab('create')}
-                      className="px-4 py-2 bg-gradient-to-r from-primary-600 to-secondary-600 text-white rounded-lg hover:from-primary-700 hover:to-secondary-700 transition-colors"
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                     >
                       Create Your Own
                     </button>
@@ -633,7 +633,7 @@ const StudyGroups = () => {
                 <button 
                   type="submit"
                   disabled={isCreating}
-                  className="px-6 py-3 bg-gradient-to-r from-primary-600 to-secondary-600 text-white font-medium rounded-lg hover:from-primary-700 hover:to-secondary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                  className="px-6 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
                 >
                   {isCreating ? (
                     <>

@@ -120,6 +120,26 @@ export const hivesAPI = {
   searchHives: async (params = {}) => {
     const response = await api.get('/hives/search', { params });
     return response.data;
+  },
+
+  generateShareableLink: async (hiveId) => {
+    const response = await api.post(`/hives/${hiveId}/share-link`);
+    return response.data;
+  },
+
+  updateShareableLinkSettings: async (hiveId, settings) => {
+    const response = await api.put(`/hives/${hiveId}/share-link/settings`, settings);
+    return response.data;
+  },
+
+  disableShareableLink: async (hiveId) => {
+    const response = await api.delete(`/hives/${hiveId}/share-link`);
+    return response.data;
+  },
+
+  joinHiveByLink: async (linkId, message = '') => {
+    const response = await api.post(`/hives/join/${linkId}`, { message });
+    return response.data;
   }
 };
 
@@ -131,6 +151,16 @@ export const messagesAPI = {
   },
 
   sendMessage: async (messageData) => {
+    // Handle FormData for file uploads
+    if (messageData instanceof FormData) {
+      const response = await api.post('/messages', messageData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    }
+    
     const response = await api.post('/messages', messageData);
     return response.data;
   },
@@ -245,6 +275,33 @@ export const resourcesAPI = {
 export const healthAPI = {
   check: async () => {
     const response = await api.get('/health');
+    return response.data;
+  }
+};
+
+// Payment API
+export const paymentsAPI = {
+  // Initialize Paystack payment
+  initializePayment: async (paymentData) => {
+    const response = await api.post('/payments/initialize', paymentData);
+    return response.data;
+  },
+
+  // Verify Paystack payment
+  verifyPayment: async (reference) => {
+    const response = await api.post('/payments/verify', { reference });
+    return response.data;
+  },
+
+  // Get user usage statistics
+  getUserUsage: async () => {
+    const response = await api.get('/payments/usage');
+    return response.data;
+  },
+
+  // Track AI tutor usage
+  trackAITutorUsage: async () => {
+    const response = await api.post('/payments/track-usage');
     return response.data;
   }
 };

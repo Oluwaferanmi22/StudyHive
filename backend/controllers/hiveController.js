@@ -1039,6 +1039,250 @@ const getJoinRequests = async (req, res) => {
   }
 };
 
+// @desc    Generate shareable link for hive
+// @route   POST /api/hives/:id/share-link
+// @access  Private (Creator/Admin only)
+const generateShareableLink = async (req, res) => {
+  try {
+    const hive = await StudyHive.findById(req.params.id);
+
+    if (!hive || !hive.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: 'Study hive not found'
+      });
+    }
+
+    // Check if user can administrate
+    if (!hive.canAdministrate(req.user.id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to generate shareable links for this hive'
+      });
+    }
+
+    const linkId = hive.generateShareableLink();
+    await hive.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Shareable link generated successfully',
+      data: {
+        shareableLink: linkId,
+        fullUrl: `${req.protocol}://${req.get('host')}/join/${linkId}`,
+        settings: hive.linkSettings
+      }
+    });
+  } catch (error) {
+    console.error('Error generating shareable link:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Update shareable link settings
+// @route   PUT /api/hives/:id/share-link/settings
+// @access  Private (Creator/Admin only)
+const updateShareableLinkSettings = async (req, res) => {
+  try {
+    const { requiresApproval, expiresAt, maxUses } = req.body;
+    const hive = await StudyHive.findById(req.params.id);
+
+    if (!hive || !hive.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: 'Study hive not found'
+      });
+    }
+
+    // Check if user can administrate
+    if (!hive.canAdministrate(req.user.id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to update shareable link settings for this hive'
+      });
+    }
+
+    hive.updateLinkSettings({
+      requiresApproval,
+      expiresAt,
+      maxUses
+    });
+    await hive.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Shareable link settings updated successfully',
+      data: {
+        settings: hive.linkSettings
+      }
+    });
+  } catch (error) {
+    console.error('Error updating shareable link settings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Disable shareable link
+// @route   DELETE /api/hives/:id/share-link
+// @access  Private (Creator/Admin only)
+const disableShareableLink = async (req, res) => {
+  try {
+    const hive = await StudyHive.findById(req.params.id);
+
+    if (!hive || !hive.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: 'Study hive not found'
+      });
+    }
+
+    // Check if user can administrate
+    if (!hive.canAdministrate(req.user.id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to disable shareable links for this hive'
+      });
+    }
+
+    hive.disableShareableLink();
+    await hive.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Shareable link disabled successfully'
+    });
+  } catch (error) {
+    console.error('Error disabling shareable link:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Join hive via shareable link
+// @route   POST /api/hives/join/:linkId
+// @access  Public
+const joinHiveByLink = async (req, res) => {
+  try {
+    const { linkId } = req.params;
+    const { message = '' } = req.body;
+
+    const hive = await StudyHive.findOne({ shareableLink: linkId });
+
+    if (!hive || !hive.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invalid or expired shareable link'
+      });
+    }
+
+    // Check if link is valid
+    if (!hive.isLinkValid()) {
+      return res.status(400).json({
+        success: false,
+        message: 'This shareable link has expired or reached its usage limit'
+      });
+    }
+
+    // If user is not authenticated, redirect to login with return URL
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        redirectTo: `/login?returnTo=/join/${linkId}`
+      });
+    }
+
+    // Check if user is already a member
+    if (hive.isMember(req.user.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are already a member of this hive'
+      });
+    }
+
+    // Check if hive is full
+    if (hive.members.length >= hive.settings.maxMembers) {
+      return res.status(400).json({
+        success: false,
+        message: 'This hive has reached its maximum member capacity'
+      });
+    }
+
+    // Increment link usage
+    hive.incrementLinkUsage();
+
+    // Check if approval is required
+    if (hive.linkSettings.requiresApproval) {
+      // Add join request
+      hive.joinRequests.push({
+        userId: req.user.id,
+        message,
+        status: 'pending',
+        requestedAt: new Date()
+      });
+
+      await hive.save();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Join request submitted successfully. Please wait for approval.',
+        data: { status: 'pending' }
+      });
+    }
+
+    // Direct join
+    hive.addMember(req.user.id, 'member');
+    await hive.save();
+
+    // Update user's hives array
+    await User.findByIdAndUpdate(req.user.id, {
+      $push: {
+        hives: {
+          hiveId: hive._id,
+          role: 'member',
+          joinedAt: new Date()
+        }
+      }
+    });
+
+    // Award points for joining a hive
+    const user = await User.findById(req.user.id);
+    user.addPoints(10, 'Joined Study Hive via Shareable Link');
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Successfully joined the study hive',
+      data: { 
+        status: 'joined',
+        hive: {
+          id: hive._id,
+          name: hive.name,
+          description: hive.description
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error joining hive by link:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getHives,
   getHive,
@@ -1055,5 +1299,9 @@ module.exports = {
   getHiveMembers,
   getHiveStats,
   searchHives,
-  getJoinRequests
+  getJoinRequests,
+  generateShareableLink,
+  updateShareableLinkSettings,
+  disableShareableLink,
+  joinHiveByLink
 };

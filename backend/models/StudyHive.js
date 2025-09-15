@@ -219,6 +219,30 @@ const studyHiveSchema = new mongoose.Schema({
   lastActivity: {
     type: Date,
     default: Date.now
+  },
+  shareableLink: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  linkSettings: {
+    isEnabled: {
+      type: Boolean,
+      default: false
+    },
+    requiresApproval: {
+      type: Boolean,
+      default: true
+    },
+    expiresAt: Date,
+    maxUses: {
+      type: Number,
+      default: null
+    },
+    usedCount: {
+      type: Number,
+      default: 0
+    }
   }
 }, {
   timestamps: true
@@ -330,6 +354,63 @@ studyHiveSchema.methods.addAnnouncement = function(title, content, authorId, isP
     isPinned,
     createdAt: new Date()
   });
+  this.lastActivity = new Date();
+};
+
+// Method to generate shareable link
+studyHiveSchema.methods.generateShareableLink = function() {
+  const crypto = require('crypto');
+  const linkId = crypto.randomBytes(16).toString('hex');
+  this.shareableLink = linkId;
+  this.linkSettings.isEnabled = true;
+  this.linkSettings.usedCount = 0;
+  this.lastActivity = new Date();
+  return linkId;
+};
+
+// Method to disable shareable link
+studyHiveSchema.methods.disableShareableLink = function() {
+  this.linkSettings.isEnabled = false;
+  this.shareableLink = null;
+  this.lastActivity = new Date();
+};
+
+// Method to update link settings
+studyHiveSchema.methods.updateLinkSettings = function(settings) {
+  if (settings.requiresApproval !== undefined) {
+    this.linkSettings.requiresApproval = settings.requiresApproval;
+  }
+  if (settings.expiresAt !== undefined) {
+    this.linkSettings.expiresAt = settings.expiresAt ? new Date(settings.expiresAt) : null;
+  }
+  if (settings.maxUses !== undefined) {
+    this.linkSettings.maxUses = settings.maxUses;
+  }
+  this.lastActivity = new Date();
+};
+
+// Method to check if link is valid
+studyHiveSchema.methods.isLinkValid = function() {
+  if (!this.linkSettings.isEnabled || !this.shareableLink) {
+    return false;
+  }
+  
+  // Check if link has expired
+  if (this.linkSettings.expiresAt && new Date() > this.linkSettings.expiresAt) {
+    return false;
+  }
+  
+  // Check if max uses reached
+  if (this.linkSettings.maxUses && this.linkSettings.usedCount >= this.linkSettings.maxUses) {
+    return false;
+  }
+  
+  return true;
+};
+
+// Method to increment link usage
+studyHiveSchema.methods.incrementLinkUsage = function() {
+  this.linkSettings.usedCount += 1;
   this.lastActivity = new Date();
 };
 

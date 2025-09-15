@@ -22,7 +22,7 @@ const Navbar = () => {
           <Link to="/" className="flex items-center">
             <div className="flex items-center">
               <div className="text-2xl">🐝</div>
-              <span className="ml-2 text-xl font-bold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
+              <span className="ml-2 text-xl font-bold text-primary-600">
                 StudyHive
               </span>
             </div>
@@ -67,8 +67,8 @@ const Navbar = () => {
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
                   className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <div className="flex items-center space-x-2 bg-gradient-to-r from-primary-50 to-secondary-50 px-4 py-2 rounded-full">
-                    <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full flex items-center justify-center text-white font-medium">
+                  <div className="flex items-center space-x-2 bg-primary-50 px-4 py-2 rounded-full">
+                    <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white font-medium">
                       {(user?.profile?.firstName || user?.username || 'U')?.charAt(0)}
                     </div>
                     <span className="font-medium text-gray-700">{user?.profile?.firstName || user?.username || 'User'}</span>
@@ -109,7 +109,7 @@ const Navbar = () => {
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-primary-600 hover:to-secondary-600 transition-colors"
+                  className="bg-primary-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-600 transition-colors"
                 >
                   Sign up
                 </Link>

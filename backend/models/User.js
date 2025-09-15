@@ -137,6 +137,28 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  premiumExpiresAt: {
+    type: Date,
+    default: null
+  },
+  usage: {
+    aiTutorMessages: {
+      daily: {
+        count: {
+          type: Number,
+          default: 0
+        },
+        lastReset: {
+          type: Date,
+          default: Date.now
+        }
+      },
+      total: {
+        type: Number,
+        default: 0
+      }
+    }
+  },
   lastActive: {
     type: Date,
     default: Date.now
@@ -214,16 +236,58 @@ userSchema.methods.isConsecutiveDay = function(lastDate, currentDate) {
 };
 
 // Method to add badge
-userSchema.methods.addBadge = function(name, description, icon) {
-  const existingBadge = this.gamification.badges.find(badge => badge.name === name);
+userSchema.methods.addBadge = function(badgeName, description, icon) {
+  const existingBadge = this.gamification.badges.find(badge => badge.name === badgeName);
   if (!existingBadge) {
     this.gamification.badges.push({
-      name,
+      name: badgeName,
       description,
       icon,
       earnedAt: new Date()
     });
   }
+};
+
+// Method to check and reset daily usage if needed
+userSchema.methods.checkAndResetDailyUsage = function() {
+  const today = new Date();
+  const lastReset = this.usage.aiTutorMessages.daily.lastReset;
+  
+  // If it's a new day, reset the daily count
+  if (!this.isSameDay(lastReset, today)) {
+    this.usage.aiTutorMessages.daily.count = 0;
+    this.usage.aiTutorMessages.daily.lastReset = today;
+  }
+};
+
+// Method to check if user can use AI tutor
+userSchema.methods.canUseAITutor = function() {
+  this.checkAndResetDailyUsage();
+  
+  // Premium users have unlimited access
+  if (this.isPremium) {
+    return true;
+  }
+  
+  // Free users have 20 messages per day limit
+  return this.usage.aiTutorMessages.daily.count < 20;
+};
+
+// Method to increment AI tutor usage
+userSchema.methods.incrementAITutorUsage = function() {
+  this.checkAndResetDailyUsage();
+  this.usage.aiTutorMessages.daily.count += 1;
+  this.usage.aiTutorMessages.total += 1;
+  this.lastActive = new Date();
+};
+
+// Method to upgrade to premium
+userSchema.methods.upgradeToPremium = function(months = 12) {
+  this.isPremium = true;
+  const expirationDate = new Date();
+  expirationDate.setMonth(expirationDate.getMonth() + months);
+  this.premiumExpiresAt = expirationDate;
+  this.lastActive = new Date();
 };
 
 // Virtual for full name

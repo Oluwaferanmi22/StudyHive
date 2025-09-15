@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import PaymentModal from '../../components/Common/PaymentModal';
+import { paymentsAPI } from '../../services/apiService';
 
 const AITutor = () => {
   const { user } = useAuth();
@@ -10,6 +11,12 @@ const AITutor = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [isPremium, setIsPremium] = useState(!!user?.isPremium);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [usage, setUsage] = useState({
+    daily: 0,
+    total: 0,
+    dailyLimit: 20,
+    remainingToday: 20
+  });
   const messagesEndRef = useRef(null);
 
   const subjects = [
@@ -22,39 +29,22 @@ const AITutor = () => {
     { id: 'languages', name: 'Languages', icon: '🌍', description: 'Foreign Languages, Translation' }
   ];
 
-  // Initialize with welcome message
+  // Load usage data on component mount
   useEffect(() => {
-    if (messages.length === 0) {
-  const initialMessage = {
-    id: 1,
-    type: 'ai',
-    content: `Hello! I'm your AI Study Assistant. I'm here to help you with your studies across various subjects. 
+    loadUsageData();
+  }, []);
 
-${isPremium ? 
-  `🎉 **Premium Features Available:**
-  - Unlimited questions per day
-  - Advanced explanations with step-by-step solutions
-  - Custom study plans
-  - Voice interaction (coming soon)
-  - Priority support` :
-  `📝 **Free Tier:**
-  - 5 questions per day (4 remaining)
-  - Basic explanations
-  - General study help
-  
-  💎 **Upgrade to Premium for:**
-  - Unlimited questions
-  - Advanced explanations
-  - Custom study plans
-  - Priority support`}
-
-How can I help you learn today?`,
-    timestamp: new Date(),
-    subject: selectedSubject
-  };
-      setMessages([initialMessage]);
+  const loadUsageData = async () => {
+    try {
+      const response = await paymentsAPI.getUserUsage();
+      if (response.success) {
+        setUsage(response.data.aiTutorUsage);
+        setIsPremium(response.data.isPremium);
+      }
+    } catch (error) {
+      console.error('Error loading usage data:', error);
     }
-  }, [isPremium, selectedSubject, messages.length]);
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -122,44 +112,69 @@ How can I help you learn today?`,
     e.preventDefault();
     if (!newMessage.trim()) return;
 
-    // Check daily limit for free users
-    if (!isPremium && messages.filter(m => m.type === 'user').length >= 5) {
-      const limitMessage = {
+    try {
+      // Track usage with backend
+      const usageResponse = await paymentsAPI.trackAITutorUsage();
+      
+      if (!usageResponse.success) {
+        // User has reached daily limit
+        const limitMessage = {
+          id: Date.now(),
+          type: 'ai',
+          content: "🚫 **Daily Limit Reached**\n\nYou've reached your daily limit of 20 questions on the free plan.\n\n💎 **Upgrade to Premium** for unlimited questions and advanced features!\n\n📅 Your limit will reset tomorrow.",
+          timestamp: new Date(),
+          subject: selectedSubject
+        };
+        setMessages(prev => [...prev, limitMessage]);
+        return;
+      }
+
+      // Update usage state
+      setUsage(prev => ({
+        ...prev,
+        daily: prev.daily + 1,
+        total: prev.total + 1,
+        remainingToday: prev.remainingToday - 1
+      }));
+
+      const userMessage = {
+        id: Date.now(),
+        type: 'user',
+        content: newMessage,
+        timestamp: new Date(),
+        subject: selectedSubject
+      };
+
+      setMessages(prev => [...prev, userMessage]);
+      setNewMessage('');
+      setIsTyping(true);
+
+      // Simulate AI thinking delay
+      setTimeout(() => {
+        const aiResponse = {
+          id: Date.now() + 1,
+          type: 'ai',
+          content: generateAIResponse(newMessage, selectedSubject),
+          timestamp: new Date(),
+          subject: selectedSubject
+        };
+
+        setMessages(prev => [...prev, aiResponse]);
+        setIsTyping(false);
+      }, 1500 + Math.random() * 1000);
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Show error message
+      const errorMessage = {
         id: Date.now(),
         type: 'ai',
-        content: "🚫 **Daily Limit Reached**\n\nYou've reached your daily limit of 5 questions on the free plan.\n\n💎 **Upgrade to Premium** for unlimited questions and advanced features!\n\n📅 Your limit will reset tomorrow.",
+        content: "❌ **Error**\n\nSorry, there was an error processing your request. Please try again.",
         timestamp: new Date(),
         subject: selectedSubject
       };
-      setMessages(prev => [...prev, limitMessage]);
-      return;
+      setMessages(prev => [...prev, errorMessage]);
     }
-
-    const userMessage = {
-      id: Date.now(),
-      type: 'user',
-      content: newMessage,
-      timestamp: new Date(),
-      subject: selectedSubject
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setNewMessage('');
-    setIsTyping(true);
-
-    // Simulate AI thinking delay
-    setTimeout(() => {
-      const aiResponse = {
-        id: Date.now() + 1,
-        type: 'ai',
-        content: generateAIResponse(newMessage, selectedSubject),
-        timestamp: new Date(),
-        subject: selectedSubject
-      };
-
-      setMessages(prev => [...prev, aiResponse]);
-      setIsTyping(false);
-    }, 1500 + Math.random() * 1000);
   };
 
   const handleSubjectChange = (subjectId) => {
@@ -186,14 +201,14 @@ How can I help you learn today?`,
           <div className={`flex items-start space-x-3 ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
               isUser 
-                ? 'bg-gradient-to-r from-primary-500 to-secondary-500 text-white' 
-                : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                ? 'bg-primary-500 text-white' 
+                : 'bg-purple-500 text-white'
             }`}>
               {isUser ? (user?.name?.charAt(0) || 'U') : '🤖'}
             </div>
             <div className={`px-4 py-3 rounded-2xl ${
               isUser 
-                ? 'bg-gradient-to-r from-primary-500 to-secondary-500 text-white' 
+                ? 'bg-primary-500 text-white' 
                 : 'bg-white border border-gray-200 text-gray-900'
             }`}>
               <div className="whitespace-pre-wrap">{message.content}</div>
@@ -216,17 +231,17 @@ How can I help you learn today?`,
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-900 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center items-center mb-4">
             <div className="text-4xl mr-3">🤖</div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold text-purple-600">
               AI Study Assistant
             </h1>
             {isPremium && (
-              <span className="ml-3 px-3 py-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 text-sm font-medium rounded-full">
+              <span className="ml-3 px-3 py-1 bg-yellow-400 text-yellow-900 text-sm font-medium rounded-full">
                 ✨ Premium
               </span>
             )}
@@ -246,7 +261,7 @@ How can I help you learn today?`,
                     onClick={() => handleSubjectChange(subject.id)}
                     className={`w-full text-left p-3 rounded-lg transition-colors ${
                       selectedSubject === subject.id
-                        ? 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 border-2 border-purple-200'
+                        ? 'bg-purple-100 text-purple-700 border-2 border-purple-200'
                         : 'hover:bg-gray-50 border-2 border-transparent'
                     }`}
                   >
@@ -262,14 +277,14 @@ How can I help you learn today?`,
               </div>
 
               {!isPremium && (
-                <div className="mt-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200">
+                <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                   <h4 className="font-medium text-yellow-800 mb-2">💎 Upgrade to Premium</h4>
                   <p className="text-xs text-yellow-700 mb-3">
                     Unlock unlimited questions, advanced explanations, and more!
                   </p>
                   <button
                     onClick={() => setShowPaymentModal(true)}
-                    className="w-full px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-400 text-yellow-900 text-sm font-medium rounded-lg hover:from-yellow-500 hover:to-orange-500 transition-colors"
+                    className="w-full px-4 py-2 bg-yellow-400 text-yellow-900 text-sm font-medium rounded-lg hover:bg-yellow-500 transition-colors"
                   >
                     Upgrade Now
                   </button>
@@ -282,10 +297,10 @@ How can I help you learn today?`,
           <div className="lg:col-span-3">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
               {/* Chat Header */}
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 rounded-t-xl">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-purple-50 rounded-t-xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium">
+                    <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white font-medium">
                       🤖
                     </div>
                     <div className="ml-3">
@@ -297,7 +312,7 @@ How can I help you learn today?`,
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-medium text-gray-900">
-                      {isPremium ? 'Unlimited' : `${Math.max(0, 5 - messages.filter(m => m.type === 'user').length)} left today`}
+                      {isPremium ? 'Unlimited' : `${usage.remainingToday} left today`}
                     </div>
                     <div className="text-xs text-gray-500">Questions remaining</div>
                   </div>
@@ -314,7 +329,7 @@ How can I help you learn today?`,
                   <div className="flex justify-start mb-6">
                     <div className="max-w-3xl">
                       <div className="flex items-start space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white">
+                        <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white">
                           🤖
                         </div>
                         <div className="px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl">
@@ -346,7 +361,7 @@ How can I help you learn today?`,
                   <button
                     type="submit"
                     disabled={!newMessage.trim() || isTyping}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
@@ -372,7 +387,7 @@ How can I help you learn today?`,
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         onSuccess={() => {
-          setIsPremium(true);
+          loadUsageData(); // Reload usage data after successful payment
           setShowPaymentModal(false);
         }}
       />

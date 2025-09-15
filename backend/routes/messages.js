@@ -15,6 +15,7 @@ const {
   getPinnedMessages,
   getMessageStats,
   uploadFile,
+  uploadSingleFile,
   getUnreadCount,
   markMessagesAsRead
 } = require('../controllers/messageController');
@@ -30,7 +31,7 @@ const validateSendMessage = [
     .withMessage('Valid hive ID is required'),
   body('messageType')
     .optional()
-    .isIn(['text', 'file', 'image', 'system', 'poll', 'code'])
+    .isIn(['text', 'file', 'image', 'system', 'poll', 'code', 'voice', 'ai'])
     .withMessage('Invalid message type'),
   body('mentions')
     .optional()
@@ -139,9 +140,24 @@ router.get('/hive/:hiveId/pinned', protect, getPinnedMessages);
 router.get('/hive/:hiveId/stats', protect, getMessageStats);
 
 // @route   POST /api/messages
-// @desc    Send a message
+// @desc    Send a message (with optional file upload)
 // @access  Private (Member only)
-router.post('/', protect, validateSendMessage, handleValidationErrors, sendMessage);
+router.post('/', protect, (req, res, next) => {
+  // Check if this is a file upload request
+  if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
+    uploadSingleFile(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({
+          success: false,
+          message: err.message
+        });
+      }
+      next();
+    });
+  } else {
+    next();
+  }
+}, sendMessage);
 
 // @route   PUT /api/messages/:id
 // @desc    Edit a message

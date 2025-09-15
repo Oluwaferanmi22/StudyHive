@@ -12,6 +12,8 @@ import Profile from './pages/Profile/Profile';
 import Gamification from './pages/Gamification/Gamification';
 import AITutor from './pages/AITutor/AITutor';
 import Upgrade from './pages/Upgrade/Upgrade';
+import JoinGroup from './pages/JoinGroup/JoinGroup';
+import PaymentCallback from './pages/PaymentCallback/PaymentCallback';
 import { AuthProvider } from './contexts/AuthContext';
 import { StudyHivesProvider } from './contexts/StudyHivesContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -47,6 +49,8 @@ function App() {
                 <Route path="/upgrade" element={<Upgrade />} />
                 <Route path="/study-timer" element={<StudyTimer />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/join/:linkId" element={<JoinGroup />} />
+                <Route path="/payment/callback" element={<PaymentCallback />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
               </main>

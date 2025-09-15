@@ -19,7 +19,7 @@ const messageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ['text', 'file', 'image', 'system', 'poll', 'code'],
+    enum: ['text', 'file', 'image', 'system', 'poll', 'code', 'voice', 'ai'],
     default: 'text'
   },
   attachments: [{
@@ -130,6 +130,21 @@ const messageSchema = new mongoose.Schema({
       default: false
     },
     expiresAt: Date
+  },
+  // For voice messages
+  voiceNote: {
+    duration: {
+      type: Number, // in seconds
+      required: function() { return this.messageType === 'voice'; }
+    },
+    waveform: [Number], // for visual representation
+    transcribedText: String // optional transcription
+  },
+  // For AI messages
+  aiResponse: {
+    model: String,
+    confidence: Number,
+    context: String
   }
 }, {
   timestamps: true
