@@ -7,12 +7,13 @@ const {
   updateProfile,
   changePassword,
   deleteAccount,
-  getUserStats
+  getUserStats,
+  health
 } = require('../controllers/authController');
 const { protect, rateLimiter } = require('../middleware/auth');
 
-// Rate limiting for auth endpoints
-const authRateLimit = rateLimiter(15 * 60 * 1000, 5); // 5 requests per 15 minutes
+// Rate limiting for auth endpoints (relaxed for demo)
+const authRateLimit = rateLimiter(60 * 1000, 100); // 100 requests per minute
 const profileRateLimit = rateLimiter(60 * 1000, 10); // 10 requests per minute
 
 // @route   POST /api/auth/register
@@ -24,6 +25,11 @@ router.post('/register', authRateLimit, register);
 // @desc    Login user
 // @access  Public
 router.post('/login', authRateLimit, login);
+
+// @route   GET /api/auth/health
+// @desc    Auth health check
+// @access  Public
+router.get('/health', health);
 
 // @route   GET /api/auth/me
 // @desc    Get current user profile

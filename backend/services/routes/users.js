@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const multer = require('multer');
-const { protect } = require('../middleware/auth');
-const User = require('../models/User');
+const { protect } = require('../../middleware/auth');
+const User = require('../../models/User');
 
 // @route   GET /api/users
 // @desc    Get all users (with filters)

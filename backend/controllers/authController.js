@@ -119,6 +119,17 @@ const register = async (req, res) => {
   }
 };
 
+// @desc    Auth service health check
+// @route   GET /api/auth/health
+// @access  Public
+const health = async (req, res) => {
+  try {
+    return res.status(200).json({ success: true, message: 'Auth OK' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Auth health error' });
+  }
+};
+
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
@@ -465,5 +476,7 @@ module.exports = {
   updateProfile,
   changePassword,
   deleteAccount,
-  getUserStats
+  getUserStats,
+  // Added: simple health endpoint for demos/monitoring
+  health
 };

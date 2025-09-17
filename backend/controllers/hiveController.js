@@ -1291,7 +1291,15 @@ const joinHiveByLink = async (req, res) => {
     hive.incrementLinkUsage();
 
     // Check if approval is required
-    if (hive.linkSettings.requiresApproval) {
+    // Approval is required if either the hive is configured to require approval,
+    // the hive is private, or the shareable link itself requires approval.
+    const approvalRequired = (
+      hive.settings?.requireApproval === true ||
+      hive.settings?.isPrivate === true ||
+      hive.linkSettings?.requiresApproval === true
+    );
+
+    if (approvalRequired) {
       // Add join request
       hive.joinRequests.push({
         userId: req.user.id,
