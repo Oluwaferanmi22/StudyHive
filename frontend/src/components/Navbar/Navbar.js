@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../pages/contexts/AuthContext';
+import { useNotifications, NOTIFICATION_TYPES } from '../../pages/contexts/NotificationContext';
 import ThemeToggle from '../Common/ThemeToggle';
 import socketService from '../../services/socketService';
 import { hivesAPI } from '../../services/apiService';
 
 const Navbar = () => {
   const { user, logout, isAuthenticated } = useAuth();
+  const { showNotification } = useNotifications();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -42,6 +44,8 @@ const Navbar = () => {
       };
       setNotifications((prev) => [item, ...prev].slice(0, 20));
       setUnreadCount((c) => c + 1);
+      // Inline toast for moderators/creator
+      showNotification(item.text, NOTIFICATION_TYPES.INFO, { duration: 4000 });
     };
 
     const onJoinRequestUpdate = (data) => {
@@ -56,6 +60,8 @@ const Navbar = () => {
       };
       setNotifications((prev) => [item, ...prev].slice(0, 20));
       setUnreadCount((c) => c + 1);
+      // Inline toast for requester
+      showNotification(item.text, verb === 'approved' ? NOTIFICATION_TYPES.SUCCESS : NOTIFICATION_TYPES.WARNING, { duration: 4000 });
     };
 
     // Optional: mentions support if server emits mention_notification already

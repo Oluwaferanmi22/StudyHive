@@ -284,24 +284,22 @@ const joinHive = async (req, res) => {
 
       await hive.save();
 
-      // Notify creator/admins via Socket.IO
+      // Notify creator/admins via Socket.IO (target user sockets)
       try {
-        const io = req.app.get('io');
-        if (io) {
-          const latestReq = hive.joinRequests[hive.joinRequests.length - 1];
-          const payload = {
-            hiveId: hive._id.toString(),
-            requestId: latestReq._id.toString(),
-            requesterId: req.user.id,
-            requesterName: req.user.username || 'User',
-            message,
-            requestedAt: latestReq.requestedAt
-          };
-          // Notify creator
-          io.to(hive.creator.toString()).emit('hive_join_request', payload);
-          // Optionally notify admins/mods too
+        const latestReq = hive.joinRequests[hive.joinRequests.length - 1];
+        const payload = {
+          hiveId: hive._id.toString(),
+          requestId: latestReq._id.toString(),
+          requesterId: req.user.id,
+          requesterName: req.user.username || 'User',
+          message,
+          requestedAt: latestReq.requestedAt
+        };
+        const socketService = req.app.get('socketService');
+        if (socketService) {
+          socketService.broadcastToUser(hive.creator.toString(), 'hive_join_request', payload);
           const moderators = hive.members.filter(m => ['admin','moderator'].includes(m.role)).map(m => m.userId.toString());
-          moderators.forEach(uid => io.to(uid).emit('hive_join_request', payload));
+          moderators.forEach(uid => socketService.broadcastToUser(uid, 'hive_join_request', payload));
         }
       } catch (_) {}
 
@@ -637,23 +635,23 @@ const manageJoinRequest = async (req, res) => {
 
     // Notify requester and creator/mods
     try {
-      const io = req.app.get('io');
-      if (io) {
-        const payload = {
-          hiveId: hive._id.toString(),
-          requestId: request._id.toString(),
-          requesterId: request.userId.toString(),
-          action,
-          status: request.status,
-          reviewedBy: req.user.id,
-          reviewedAt: request.reviewedAt
-        };
+      const payload = {
+        hiveId: hive._id.toString(),
+        requestId: request._id.toString(),
+        requesterId: request.userId.toString(),
+        action,
+        status: request.status,
+        reviewedBy: req.user.id,
+        reviewedAt: request.reviewedAt
+      };
+      const socketService = req.app.get('socketService');
+      if (socketService) {
         // Notify requester about outcome
-        io.to(request.userId.toString()).emit('hive_join_request_update', payload);
+        socketService.broadcastToUser(request.userId.toString(), 'hive_join_request_update', payload);
         // Notify creator and moderators for bookkeeping
-        io.to(hive.creator.toString()).emit('hive_join_request_update', payload);
+        socketService.broadcastToUser(hive.creator.toString(), 'hive_join_request_update', payload);
         const moderators = hive.members.filter(m => ['admin','moderator'].includes(m.role)).map(m => m.userId.toString());
-        moderators.forEach(uid => io.to(uid).emit('hive_join_request_update', payload));
+        moderators.forEach(uid => socketService.broadcastToUser(uid, 'hive_join_request_update', payload));
       }
     } catch (_) {}
 
