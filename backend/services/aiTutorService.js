@@ -1,6 +1,7 @@
 // Simple AI Tutor service with pluggable provider.
 // Returns structured responses with subject-aware tips. Now accepts any topic.
 let OpenAIClient = null;
+const FORCE_BUILTIN = String(process.env.AI_FORCE_BUILTIN || '').toLowerCase() === 'true';
 try {
   OpenAIClient = require('openai');
 } catch (e) {
@@ -115,7 +116,7 @@ ${add}`;
 
 async function generateAnswer(question, subject = 'general') {
   try {
-    if (process.env.OPENAI_API_KEY && OpenAIClient) {
+    if (!FORCE_BUILTIN && process.env.OPENAI_API_KEY && OpenAIClient) {
       const openai = new OpenAIClient({ apiKey: process.env.OPENAI_API_KEY });
       const system = 'You are a helpful, accurate AI study tutor. Match the user\'s requested format and level of detail. If no format is specified, give a clear, step-by-step explanation with key points, examples, and a brief summary. When a simple visual helps, include up to 2 relevant images as Markdown links like ![alt](URL) using reputable sources (e.g., Wikimedia/Wikipedia). Do not include images if they are not helpful.';
       const userPrompt = `Subject: ${subject}\nQuestion: ${question}`;

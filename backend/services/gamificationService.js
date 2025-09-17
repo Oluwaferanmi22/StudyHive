@@ -1,6 +1,3 @@
-// Simple Gamification service
-// Centralizes points awards, bonuses, badges, and realtime notifications
-
 const POINTS = {
   AI_TUTOR_ANSWER: 2,
   AI_TUTOR_FIRST_OF_DAY_BONUS: 5,
