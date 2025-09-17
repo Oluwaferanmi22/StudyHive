@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useTimer } from '../../contexts/TimerContext';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTimer } from '../contexts/TimerContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 const StudyTimer = () => {
   const {

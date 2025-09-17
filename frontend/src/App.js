@@ -14,14 +14,15 @@ import AITutor from './pages/AITutor/AITutor';
 import Upgrade from './pages/Upgrade/Upgrade';
 import JoinGroup from './pages/JoinGroup/JoinGroup';
 import PaymentCallback from './pages/PaymentCallback/PaymentCallback';
-import { AuthProvider } from './contexts/AuthContext';
-import { StudyHivesProvider } from './contexts/StudyHivesContext';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { TimerProvider } from './contexts/TimerContext';
-import { NotificationProvider } from './contexts/NotificationContext';
+import { AuthProvider } from './pages/contexts/AuthContext';
+import { StudyHivesProvider } from './pages/contexts/StudyHivesContext';
+import { ThemeProvider } from './pages/contexts/ThemeContext';
+import { TimerProvider } from './pages/contexts/TimerContext';
+import { NotificationProvider } from './pages/contexts/NotificationContext';
 import ConnectionStatus from './components/Common/ConnectionStatus';
 import NotificationContainer from './components/Common/NotificationContainer';
 import StudyTimer from './pages/StudyTimer/StudyTimer';
+import Notifications from './pages/Notifications/Notifications';
 import './styles/theme.css';
 
 function App() {
@@ -50,6 +51,7 @@ function App() {
                 <Route path="/study-timer" element={<StudyTimer />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/join/:linkId" element={<JoinGroup />} />
+                <Route path="/notifications" element={<Notifications />} />
                 <Route path="/payment/callback" element={<PaymentCallback />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

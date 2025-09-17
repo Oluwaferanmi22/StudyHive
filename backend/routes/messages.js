@@ -24,8 +24,8 @@ const {
 const validateSendMessage = [
   body('content')
     .trim()
-    .isLength({ min: 1, max: 2000 })
-    .withMessage('Message content must be between 1 and 2000 characters'),
+    .isLength({ min: 1 })
+    .withMessage('Message content is required'),
   body('hiveId')
     .isMongoId()
     .withMessage('Valid hive ID is required'),

@@ -114,6 +114,14 @@ class SocketService {
       this.emit('user_left_hive', data);
     });
 
+    // Join request notifications
+    this.socket.on('hive_join_request', (data) => {
+      this.emit('hive_join_request', data);
+    });
+    this.socket.on('hive_join_request_update', (data) => {
+      this.emit('hive_join_request_update', data);
+    });
+
     // User status
     this.socket.on('user_status_update', (data) => {
       this.emit('user_status_update', data);

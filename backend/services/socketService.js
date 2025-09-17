@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const StudyHive = require('../models/StudyHive');
 const Message = require('../models/Message');
+const aiTutorService = require('./aiTutorService');
 
 class SocketService {
   constructor() {
@@ -193,6 +194,52 @@ class SocketService {
 
       // Confirm to sender
       socket.emit('message_sent', { success: true, message });
+
+      // AI Tutor bot triggers in group chat
+      try {
+        const originalContent = content || '';
+        const mentionTriggered = /@tutor|@ai/i.test(originalContent);
+        const slashTriggered = /^\/(ask|explain)\s+/i.test(originalContent);
+
+        if (mentionTriggered || slashTriggered) {
+          // Determine the user's question
+          let question = originalContent.replace(/^\/(ask|explain)\s+/i, '').trim();
+          if (!question) question = originalContent;
+
+          // Enforce usage for the triggering user
+          const u = await User.findById(socket.userId);
+          if (!u) return;
+
+          if (!u.canUseAITutor()) {
+            const limitMsg = await Message.create({
+              content: '🚫 Daily limit reached. Upgrade to premium for unlimited AI tutor access.',
+              author: null,
+              hive: hiveId,
+              messageType: 'system',
+            });
+            this.io.to(`hive_${hiveId}`).emit('new_message', { message: limitMsg, hiveId });
+            return;
+          }
+
+          // Generate AI answer (subject unknown in group chat -> general)
+          const answer = await aiTutorService.generateAnswer(question, 'general');
+
+          // Increment usage and save
+          u.incrementAITutorUsage();
+          await u.save();
+
+          // Post bot/system message in hive
+          const botMsg = await Message.create({
+            content: answer,
+            author: null, // system/bot
+            hive: hiveId,
+            messageType: 'system',
+          });
+          this.io.to(`hive_${hiveId}`).emit('new_message', { message: botMsg, hiveId });
+        }
+      } catch (botErr) {
+        console.error('AI tutor bot error:', botErr);
+      }
 
     } catch (error) {
       console.error('Error handling send message:', error);

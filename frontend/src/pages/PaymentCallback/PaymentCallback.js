@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { paymentsAPI } from '../../services/apiService';
 
@@ -7,6 +7,8 @@ const PaymentCallback = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState('verifying'); // verifying, success, error
   const [message, setMessage] = useState('Verifying your payment...');
+
+  const pollingRef = useRef(null);
 
   useEffect(() => {
     const verifyPayment = async () => {
@@ -26,11 +28,28 @@ const PaymentCallback = () => {
         if (response.success) {
           setStatus('success');
           setMessage('Payment successful! Welcome to StudyHive Premium!');
-          
-          // Redirect to AI Tutor after 3 seconds
-          setTimeout(() => {
-            navigate('/ai-tutor');
-          }, 3000);
+
+          // Poll usage to reflect webhook-based upgrades quickly
+          let attempts = 0;
+          const maxAttempts = 10;
+          pollingRef.current = setInterval(async () => {
+            attempts += 1;
+            try {
+              const usageRes = await paymentsAPI.getUserUsage();
+              if (usageRes?.success && usageRes?.data?.isPremium) {
+                clearInterval(pollingRef.current);
+                navigate('/ai-tutor');
+              } else if (attempts >= maxAttempts) {
+                clearInterval(pollingRef.current);
+                navigate('/ai-tutor');
+              }
+            } catch (e) {
+              if (attempts >= maxAttempts) {
+                clearInterval(pollingRef.current);
+                navigate('/ai-tutor');
+              }
+            }
+          }, 1000);
         } else {
           setStatus('error');
           setMessage(response.message || 'Payment verification failed');
@@ -43,6 +62,9 @@ const PaymentCallback = () => {
     };
 
     verifyPayment();
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
   }, [searchParams, navigate]);
 
   return (

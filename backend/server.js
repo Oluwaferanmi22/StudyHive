@@ -33,6 +33,14 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:3000",
   credentials: true
 }));
+
+// Stripe webhook must use raw body for signature verification BEFORE json/urlencoded parsers
+app.post('/api/payments/stripe/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
+  const { handleStripeWebhook } = require('./controllers/stripeWebhookController');
+  return handleStripeWebhook(req, res);
+});
+
+// Standard parsers for other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -56,6 +64,8 @@ app.use('/api/resources', require('./routes/resources'));
 app.use('/api/questions', require('./routes/questions'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/payments', require('./routes/payments'));
+app.use('/api/ai', require('./routes/ai'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Make Socket.IO available globally for other modules
 app.set('io', io);

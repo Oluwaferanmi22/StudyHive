@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom';
 import StudyGroupChat from '../../components/Chat/StudyGroupChat';
 import VideoCall from '../../components/Video/VideoCall';
 import { resourcesAPI, hivesAPI } from '../../services/apiService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
+import socketService from '../../services/socketService';
 
 const StudyGroupDetail = () => {
   const { groupId } = useParams();
@@ -38,6 +39,16 @@ const StudyGroupDetail = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState(null);
   const [isCreator, setIsCreator] = useState(false);
+  const [canModerate, setCanModerate] = useState(false); // creator/admin/mod
+  // Join requests panel state
+  const [joinRequests, setJoinRequests] = useState([]);
+  const [joinLoading, setJoinLoading] = useState(false);
+  const [canViewJoinRequests, setCanViewJoinRequests] = useState(false);
+  const [joinError, setJoinError] = useState('');
+  // Members panel state
+  const [members, setMembers] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersError, setMembersError] = useState('');
 
   useEffect(() => {
     const fetchResources = async () => {
@@ -51,12 +62,124 @@ const StudyGroupDetail = () => {
     if (groupId) fetchResources();
   }, [groupId]);
 
-  // Check if user is creator
+  // Fetch hive details to determine permissions (creator/admin/mod)
   useEffect(() => {
-    // This would be determined by the actual group data from backend
-    // For now, we'll assume the user is the creator if they're logged in
-    setIsCreator(!!user);
-  }, [user]);
+    const loadHive = async () => {
+      if (!groupId || !user) return;
+      try {
+        const res = await hivesAPI.getHive(groupId);
+        if (res?.success && res.data) {
+          const hive = res.data;
+          const isCreatorNow = hive.creator?._id === user?.id;
+          setIsCreator(!!isCreatorNow);
+          // Determine moderation rights from members list
+          const me = (hive.members || []).find(m => (m.userId?._id || m.userId) === user?.id);
+          const role = me?.role;
+          setCanModerate(isCreatorNow || role === 'admin' || role === 'moderator');
+        }
+      } catch (e) {
+        // keep defaults
+        console.warn('Failed to load hive details', e);
+      }
+    };
+    loadHive();
+  }, [groupId, user]);
+
+  // Fetch pending join requests (only if user can moderate)
+  useEffect(() => {
+    let mounted = true;
+    const fetchPending = async () => {
+      if (!groupId || !(canModerate || isCreator)) return;
+      try {
+        setJoinLoading(true);
+        setJoinError('');
+        const res = await hivesAPI.getJoinRequests(groupId, 'pending');
+        if (!mounted) return;
+        if (res.success) {
+          setJoinRequests(res.data || []);
+          setCanViewJoinRequests(true);
+        } else {
+          setCanViewJoinRequests(true); // show panel with error note
+          setJoinError(res.message || 'Unable to load join requests');
+        }
+      } catch (e) {
+        setCanViewJoinRequests(true);
+        const status = e?.response?.status;
+        if (status === 403) {
+          setJoinError('You do not have permission to view join requests for this hive.');
+        } else {
+          setJoinError('Failed to load join requests.');
+        }
+      } finally {
+        if (mounted) setJoinLoading(false);
+      }
+    };
+    fetchPending();
+
+    // Live updates via socket
+    const onRequest = (data) => {
+      if (data?.hiveId === groupId) fetchPending();
+    };
+    const onUpdate = (data) => {
+      if (data?.hiveId === groupId) fetchPending();
+    };
+    socketService.on('hive_join_request', onRequest);
+    socketService.on('hive_join_request_update', onUpdate);
+    return () => {
+      mounted = false;
+      socketService.off('hive_join_request', onRequest);
+      socketService.off('hive_join_request_update', onUpdate);
+    };
+  }, [groupId, canModerate, isCreator]);
+
+  // Fetch members list (viewer must be member for private hives; backend enforces)
+  useEffect(() => {
+    let mounted = true;
+    const loadMembers = async () => {
+      if (!groupId) return;
+      try {
+        setMembersLoading(true);
+        setMembersError('');
+        const res = await hivesAPI.getHiveMembers(groupId);
+        if (!mounted) return;
+        if (res?.success) {
+          setMembers(res.data || []);
+        } else {
+          setMembersError(res?.message || 'Unable to load members');
+        }
+      } catch (e) {
+        setMembersError('Failed to load members');
+      } finally {
+        if (mounted) setMembersLoading(false);
+      }
+    };
+    loadMembers();
+    return () => { mounted = false; };
+  }, [groupId]);
+
+  const changeRole = async (memberUserId, nextRole) => {
+    try {
+      await hivesAPI.updateMemberRole(groupId, memberUserId, nextRole);
+      setMembers(prev => prev.map(m => ( (m.userId?._id || m.userId) === memberUserId ? { ...m, role: nextRole } : m)));
+    } catch (e) {
+      // noop; could show toast
+    }
+  };
+
+  const handleApprove = async (requestId) => {
+    try {
+      await hivesAPI.manageJoinRequest(groupId, requestId, 'approve');
+      setJoinRequests(prev => prev.filter(r => r._id !== requestId));
+    } catch (e) {
+      // no-op; panel visibility already gated by permission
+    }
+  };
+  const handleReject = async (requestId) => {
+    try {
+      await hivesAPI.manageJoinRequest(groupId, requestId, 'reject');
+      setJoinRequests(prev => prev.filter(r => r._id !== requestId));
+    } catch (e) {}
+  };
 
   const generateShareableLink = async () => {
     try {
@@ -241,6 +364,54 @@ const StudyGroupDetail = () => {
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Pending Join Requests - visible for creator/mods when available */}
+                {canViewJoinRequests && (
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                        Pending Join Requests
+                      </h2>
+                      <span className="text-sm px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                        {joinLoading ? 'Loading…' : `${joinRequests.length}`}
+                      </span>
+                    </div>
+                    {joinError && (
+                      <div className="mb-3 text-sm text-red-600 dark:text-red-400">{joinError}</div>
+                    )}
+                    {joinRequests.length === 0 && !joinLoading && (
+                      <p className="text-sm text-gray-600 dark:text-gray-300">No pending requests.</p>
+                    )}
+                    <ul className="space-y-3">
+                      {joinRequests.map((req) => (
+                        <li key={req._id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              {req.userId?.profile?.firstName || req.userId?.username || 'User'}
+                            </p>
+                            {req.message && (
+                              <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">“{req.message}”</p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleApprove(req._id)}
+                              className="px-3 py-1.5 text-xs rounded bg-green-600 text-white hover:bg-green-700"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleReject(req._id)}
+                              className="px-3 py-1.5 text-xs rounded bg-red-600 text-white hover:bg-red-700"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>

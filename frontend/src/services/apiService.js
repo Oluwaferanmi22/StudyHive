@@ -36,6 +36,40 @@ export const authAPI = {
   }
 };
 
+// Notifications API
+export const notificationsAPI = {
+  list: async ({ page = 1, limit = 20, unreadOnly = false } = {}) => {
+    const response = await api.get('/notifications', { params: { page, limit, unreadOnly } });
+    return response.data;
+  },
+  markRead: async (id) => {
+    const response = await api.post(`/notifications/${id}/read`);
+    return response.data;
+  },
+  markAllRead: async () => {
+    const response = await api.post('/notifications/read-all');
+    return response.data;
+  },
+  clearAll: async () => {
+    const response = await api.delete('/notifications/clear');
+    return response.data;
+  }
+};
+
+// AI Tutor API
+export const aiAPI = {
+  ask: async ({ question, subject = 'general' }) => {
+    try {
+      const response = await api.post('/ai/ask', { question, subject });
+      return response.data;
+    } catch (error) {
+      const status = error?.response?.status || 0;
+      const message = error?.response?.data?.message || 'Request failed';
+      return { success: false, message, status };
+    }
+  },
+};
+
 // Study Hives API
 export const hivesAPI = {
   getHives: async (params = {}) => {
@@ -302,6 +336,12 @@ export const paymentsAPI = {
   // Track AI tutor usage
   trackAITutorUsage: async () => {
     const response = await api.post('/payments/track-usage');
+    return response.data;
+  },
+
+  // Get payments display configuration
+  getConfig: async () => {
+    const response = await api.get('/payments/config');
     return response.data;
   }
 };

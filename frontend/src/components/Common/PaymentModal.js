@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../pages/contexts/AuthContext';
 import { paymentsAPI } from '../../services/apiService';
 
 const PaymentModal = ({ isOpen, onClose, onSuccess }) => {
@@ -9,6 +9,38 @@ const PaymentModal = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     email: user?.email || ''
   });
+  const [config, setConfig] = useState({ provider: (process.env.REACT_APP_PAYMENTS_PROVIDER || 'paystack'), currency: 'NGN', priceMajor: 5000 });
+
+  const formatPrice = (amount, currency) => {
+    const cur = (currency || 'NGN').toUpperCase();
+    try {
+      const symbolMap = { USD: '$', NGN: '₦', EUR: '€', GBP: '£' };
+      const symbol = symbolMap[cur] || '';
+      // Use Intl if available
+      if (typeof Intl !== 'undefined' && Intl.NumberFormat) {
+        const nf = new Intl.NumberFormat(undefined, { style: 'currency', currency: cur, currencyDisplay: symbol ? 'symbol' : 'code' });
+        return nf.format(Number(amount) || 0);
+      }
+      return `${symbol}${amount} ${symbol ? '' : cur}`.trim();
+    } catch {
+      return `${amount} ${cur}`;
+    }
+  };
+
+  React.useEffect(() => {
+    let mounted = true;
+    if (isOpen) {
+      paymentsAPI.getConfig().then((res) => {
+        if (!mounted) return;
+        if (res?.success && res?.data) {
+          setConfig(res.data);
+        }
+      }).catch(() => {
+        // fallback to env/defaults
+      });
+    }
+    return () => { mounted = false; };
+  }, [isOpen]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -27,7 +59,7 @@ const PaymentModal = ({ isOpen, onClose, onSuccess }) => {
       // Initialize Paystack payment
       const paymentData = {
         email: formData.email,
-        amount: 5000, // 5000 NGN
+        amount: Number(config.priceMajor) || 5000,
         plan: 'premium'
       };
 
@@ -108,7 +140,7 @@ const PaymentModal = ({ isOpen, onClose, onSuccess }) => {
                       <span className="text-white font-bold text-sm">P</span>
                     </div>
                     <div>
-                      <div className="font-medium text-gray-900 dark:text-white">Paystack Payment</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{(process.env.REACT_APP_PAYMENTS_PROVIDER || 'paystack').toUpperCase()} Payment</div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">Secure payment processing</div>
                     </div>
                   </div>
@@ -136,7 +168,7 @@ const PaymentModal = ({ isOpen, onClose, onSuccess }) => {
                 <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-700 dark:text-gray-300">Premium Plan</span>
-                    <span className="text-lg font-semibold text-gray-900 dark:text-white">₦5,000</span>
+                    <span className="text-lg font-semibold text-gray-900 dark:text-white">{formatPrice(config.priceMajor, config.currency)}</span>
                   </div>
                   <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     One-time payment • Lifetime access
@@ -162,7 +194,7 @@ const PaymentModal = ({ isOpen, onClose, onSuccess }) => {
                     disabled={loading}
                     className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {loading ? 'Processing...' : 'Pay ₦5,000 with Paystack'}
+                    {loading ? 'Processing...' : 'Pay Now'}
                   </button>
                 </div>
               </form>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNotifications } from '../../contexts/NotificationContext';
+import { useNotifications } from '../../pages/contexts/NotificationContext';
 
 const NotificationDemo = () => {
   const {

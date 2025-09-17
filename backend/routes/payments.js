@@ -4,7 +4,8 @@ const {
   initializePayment,
   verifyPayment,
   getUserUsage,
-  trackAITutorUsage
+  trackAITutorUsage,
+  getConfig
 } = require('../controllers/paymentController');
 const { protect } = require('../middleware/auth');
 
@@ -27,5 +28,10 @@ router.get('/usage', protect, getUserUsage);
 // @desc    Track AI tutor usage
 // @access  Private
 router.post('/track-usage', protect, trackAITutorUsage);
+
+// @route   GET /api/payments/config
+// @desc    Get payments display configuration
+// @access  Public
+router.get('/config', getConfig);
 
 module.exports = router;

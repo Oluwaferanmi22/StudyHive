@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import socketService from '../../services/socketService';
+import { useAuth } from '../../pages/contexts/AuthContext';
 import { messagesAPI, hivesAPI } from '../../services/apiService';
+import { buildFileUrl } from '../../api';
 import { SkeletonMessage, TypingIndicator, InlineLoader } from '../Common/Loaders';
 
 const StudyGroupChat = ({ groupId, groupName }) => {
@@ -22,7 +23,10 @@ const StudyGroupChat = ({ groupId, groupName }) => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [aiMessage, setAiMessage] = useState('');
+  // Default ON; will be overridden by saved preference if present
+  const [autoAIEnabled, setAutoAIEnabled] = useState(true);
   const messagesEndRef = useRef(null);
+  const [toast, setToast] = useState(null); // { text, delta, levelUp }
   const typingTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
   const audioRef = useRef(null);
@@ -62,6 +66,30 @@ const StudyGroupChat = ({ groupId, groupName }) => {
     };
     if (groupId) fetchMessages();
     return () => { isMounted = false; };
+  }, [groupId]);
+
+  // Gamification toast listener
+  useEffect(() => {
+    const handler = (data) => {
+      if (!data) return;
+      const txt = `${data.delta > 0 ? '+' : ''}${data.delta} XP` + (data.leveledUp ? ' • Level Up! 🎉' : '');
+      setToast({ text: txt });
+      setTimeout(() => setToast(null), 2500);
+    };
+    socketService.on('gamification:update', handler);
+    return () => socketService.off('gamification:update', handler);
+  }, []);
+
+  // Load and persist Auto AI preference per group
+  useEffect(() => {
+    const key = `autoAIEnabled_${groupId}`;
+    const saved = localStorage.getItem(key);
+    if (saved !== null) {
+      setAutoAIEnabled(saved === 'true');
+    } else {
+      // default ON if no preference saved
+      setAutoAIEnabled(true);
+    }
   }, [groupId]);
 
   // Load group members
@@ -105,7 +133,11 @@ const StudyGroupChat = ({ groupId, groupName }) => {
         },
         message: message?.content,
         timestamp: message?.createdAt || new Date(),
-        type: message?.messageType === 'system' ? 'system' : 'message'
+        type: message?.messageType === 'system' ? 'system' : 'message',
+        messageType: message?.messageType || 'text',
+        attachments: message?.attachments || [],
+        voiceNote: message?.voiceNote,
+        aiResponse: message?.aiResponse,
       };
       setMessages(prev => [...prev, normalized]);
     };
@@ -166,8 +198,9 @@ const StudyGroupChat = ({ groupId, groupName }) => {
     try {
       // If the message starts with "/ai", route it to the AI (free in group chat)
       const aiPrefixMatch = messageText.trim().match(/^\/(ai|ask)\s+(.*)$/i);
-      if (aiPrefixMatch) {
-        const aiPrompt = aiPrefixMatch[2];
+      const shouldRouteToAI = autoAIEnabled || !!aiPrefixMatch;
+      if (shouldRouteToAI) {
+        const aiPrompt = aiPrefixMatch ? aiPrefixMatch[2] : messageText.trim();
 
         // Show the user's question immediately
         const tempId = `tmp_${Date.now()}`;
@@ -443,7 +476,7 @@ const StudyGroupChat = ({ groupId, groupName }) => {
               {message.attachments?.map((attachment, index) => (
                 <img
                   key={index}
-                  src={`http://localhost:5000/${attachment.filePath}`}
+                  src={buildFileUrl(attachment.filePath)}
                   alt={attachment.fileName}
                   className="max-w-full h-auto rounded-lg mb-2"
                   onError={(e) => {
@@ -451,20 +484,18 @@ const StudyGroupChat = ({ groupId, groupName }) => {
                   }}
                 />
               ))}
-              {message.message && message.message !== '[Image]' && <p className="text-sm">{message.message}</p>}
             </div>
           );
-        case 'voice':
+        case 'voice': {
           const playVoiceNote = () => {
             if (message.attachments && message.attachments.length > 0) {
-              const audio = new Audio(`http://localhost:5000/${message.attachments[0].filePath}`);
+              const audio = new Audio(buildFileUrl(message.attachments[0].filePath));
               audio.play().catch(console.error);
             }
           };
-          
           return (
             <div className="flex items-center space-x-2">
-              <button 
+              <button
                 onClick={playVoiceNote}
                 className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
               >
@@ -480,10 +511,11 @@ const StudyGroupChat = ({ groupId, groupName }) => {
               </div>
             </div>
           );
+        }
         case 'ai':
           return (
             <div>
-              <div className="flex items-center space-x-2 mb-2">
+              <div className="flex items-center space-x-2 mb-1">
                 <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
                   🤖 AI Assistant
                 </span>
@@ -493,7 +525,7 @@ const StudyGroupChat = ({ groupId, groupName }) => {
                   </span>
                 )}
               </div>
-              <p className="text-sm">{message.message}</p>
+              <p className="text-sm">{message.aiResponse?.answer || message.message}</p>
             </div>
           );
         default:
@@ -669,13 +701,13 @@ const StudyGroupChat = ({ groupId, groupName }) => {
       <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200">
         <div className="flex space-x-2">
           <div className="flex-1 relative">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={handleInputChange}
-              placeholder="Type your message... (use @ to tag members, /ai question for AI)"
+            <input
+              type="text"
+              value={newMessage}
+              onChange={handleInputChange}
+              placeholder={autoAIEnabled ? "Ask the AI anything... (AI Mode ON)" : "Type your message... (use @ to tag members, /ai question for AI)"}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            disabled={!isConnected || isSending}
+              disabled={!isConnected || isSending}
               onFocus={() => setShowMemberList(newMessage.includes('@'))}
             />
             {showMemberList && (
@@ -733,7 +765,7 @@ const StudyGroupChat = ({ groupId, groupName }) => {
               </svg>
             </button>
 
-            {/* AI Assistant Button */}
+            {/* AI Assistant Modal Button */}
             <button
               type="button"
               onClick={() => setShowAIAssistant(true)}

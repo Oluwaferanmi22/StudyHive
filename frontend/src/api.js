@@ -40,3 +40,22 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// Helper: get API base URL and origin for building asset links
+export const getApiBaseUrl = () => API_BASE_URL;
+export const getApiOrigin = () => {
+  try {
+    const url = new URL(API_BASE_URL);
+    return `${url.protocol}//${url.host}`;
+  } catch (e) {
+    // Fallback if API_BASE_URL is relative or invalid
+    return API_BASE_URL.replace(/\/?api$/, '');
+  }
+};
+
+// Helper: build file URL from relative file path stored by backend (e.g., uploads/messages/..)
+export const buildFileUrl = (relativePath = '') => {
+  const origin = getApiOrigin();
+  const cleanPath = relativePath.replace(/^\/+/, '');
+  return `${origin}/${cleanPath}`;
+};

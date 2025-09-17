@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
+import { buildFileUrl } from '../../api';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -76,11 +77,11 @@ const Profile = () => {
             <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-6">
               <div className="-mt-16 relative">
                 {user?.profile?.avatar ? (
-                  <img src={`/${user.profile.avatar}`} alt="Avatar" className="w-32 h-32 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-lg" />
+                  <img src={buildFileUrl(user.profile.avatar)} alt="Avatar" className="w-32 h-32 rounded-full object-cover border-4 border-white dark:border-gray-800 shadow-lg" />
                 ) : (
-                <div className="w-32 h-32 rounded-full bg-gradient-to-r from-primary-600 to-secondary-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
+                  <div className="w-32 h-32 rounded-full bg-gradient-to-r from-primary-600 to-secondary-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
                     {user?.username?.charAt(0) || 'U'}
-                </div>
+                  </div>
                 )}
                 <label className="absolute bottom-0 right-0 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full p-2 cursor-pointer shadow">
                   <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
@@ -107,11 +108,27 @@ const Profile = () => {
                   <div>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{user?.username}</h1>
                     <p className="text-gray-600 dark:text-gray-300">{formData.major}{formData.institution ? ` at ${formData.institution}` : ''}</p>
-                    <div className="flex items-center mt-2 space-x-4">
+                    <div className="flex flex-col mt-2 space-y-2">
                       {user?.gamification && (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-                          Level {user.gamification.level} • {user.gamification.points} pts
-                      </span>
+                        <div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 mr-2">Level {user.gamification.level}</span>
+                            <span className="text-gray-600 dark:text-gray-300">{user.gamification.points} pts</span>
+                          </div>
+                          {/* Level progress bar */}
+                          {(() => {
+                            const points = user?.gamification?.points || 0;
+                            const level = user?.gamification?.level || 1;
+                            const base = Math.pow(level - 1, 2) * 100;
+                            const next = Math.pow(level, 2) * 100;
+                            const pct = Math.max(0, Math.min(1, (points - base) / Math.max(1, next - base)));
+                            return (
+                              <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mt-1">
+                                <div className="h-full bg-gradient-to-r from-primary-500 to-secondary-500" style={{ width: `${(pct * 100).toFixed(0)}%` }} />
+                              </div>
+                            );
+                          })()}
+                        </div>
                       )}
                       <span className="text-sm text-gray-600 dark:text-gray-300">📍 {formData.location}</span>
                     </div>
@@ -245,6 +262,22 @@ const Profile = () => {
                         ))}
                       </div>
                     </div>
+                    {user?.gamification?.badges?.length > 0 && (
+                      <div>
+                        <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Badges</h3>
+                        <div className="flex flex-wrap gap-3">
+                          {user.gamification.badges.map((b, idx) => (
+                            <div key={idx} className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm text-gray-800 dark:text-gray-100 flex items-center space-x-2">
+                              <span className="text-lg">{b.icon || '🏅'}</span>
+                              <div>
+                                <div className="font-medium">{b.name}</div>
+                                <div className="text-[11px] text-gray-500">{b.description}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

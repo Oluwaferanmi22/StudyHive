@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import PaymentModal from '../../components/Common/PaymentModal';
-import { paymentsAPI } from '../../services/apiService';
+import { paymentsAPI, aiAPI } from '../../services/apiService';
+import socketService from '../../services/socketService';
 
 const AITutor = () => {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ const AITutor = () => {
     remainingToday: 20
   });
   const messagesEndRef = useRef(null);
+  const [toast, setToast] = useState(null); // { text, delta, levelUp }
 
   const subjects = [
     { id: 'general', name: 'General Help', icon: '🎓', description: 'General academic assistance' },
@@ -32,6 +34,18 @@ const AITutor = () => {
   // Load usage data on component mount
   useEffect(() => {
     loadUsageData();
+  }, []);
+
+  // Gamification toast listener
+  useEffect(() => {
+    const handler = (data) => {
+      if (!data) return;
+      const txt = `${data.delta > 0 ? '+' : ''}${data.delta} XP` + (data.leveledUp ? ' • Level Up! 🎉' : '');
+      setToast({ text: txt, delta: data.delta, levelUp: !!data.leveledUp });
+      setTimeout(() => setToast(null), 2500);
+    };
+    socketService.on('gamification:update', handler);
+    return () => socketService.off('gamification:update', handler);
   }, []);
 
   const loadUsageData = async () => {
@@ -54,132 +68,60 @@ const AITutor = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Simple subject whitelist to keep AI educational
-  const isEducational = (text) => {
-    const banned = [/politics/i, /adult/i, /gambling/i, /violence/i];
-    return !banned.some(rx => rx.test(text));
-  };
+  // Allow any input topics
 
-  // Mock educational responses
-  const generateAIResponse = (question, subject) => {
-    if (!isEducational(question)) {
-      return "I can only help with educational topics. Please ask a study-related question.";
-    }
-    const responses = {
-      mathematics: [
-        "Great math question! Let me break this down step by step for you.",
-        "Mathematics is all about patterns and logic. Here's how I'd approach this problem:",
-        "This is a classic problem in mathematics. Let me explain the concept first, then we'll solve it together.",
-      ],
-      science: [
-        "Excellent science question! Let's explore this concept together.",
-        "Science is fascinating! This relates to some fundamental principles. Let me explain:",
-        "Great observation! This touches on an important scientific principle. Here's what's happening:",
-      ],
-      programming: [
-        "Nice coding question! Let's debug this step by step.",
-        "Programming is about breaking problems into smaller pieces. Here's my approach:",
-        "Great question! This is a common challenge in programming. Let me show you a solution:",
-      ],
-      writing: [
-        "Excellent writing question! Let me help you improve your composition.",
-        "Writing is an art! Here are some techniques that can help:",
-        "Great question about writing! Let's work on making your text more engaging:",
-      ],
-      general: [
-        "That's a thoughtful question! Let me help you understand this better.",
-        "Great question! I'm here to help you learn. Here's my explanation:",
-        "Thanks for asking! Learning is a journey, and I'm here to guide you:",
-      ]
-    };
-
-    const subjectResponses = responses[subject] || responses.general;
-    const randomResponse = subjectResponses[Math.floor(Math.random() * subjectResponses.length)];
-
-    // Add some subject-specific content
-    const additionalContent = {
-      mathematics: "\n\n🔢 **Mathematical Approach:**\n1. Identify what we know\n2. Determine what we need to find\n3. Choose the appropriate formula/method\n4. Solve step by step\n5. Check our answer\n\nWould you like me to work through a specific problem?",
-      science: "\n\n🔬 **Scientific Method:**\n1. Observe the phenomenon\n2. Form a hypothesis\n3. Test through experimentation\n4. Analyze results\n5. Draw conclusions\n\nWhat specific area of science interests you most?",
-      programming: "\n\n💻 **Coding Best Practices:**\n1. Break down the problem\n2. Write pseudocode first\n3. Implement in small steps\n4. Test frequently\n5. Refactor and optimize\n\nWhat programming language are you working with?",
-      writing: "\n\n✍️ **Writing Tips:**\n1. Start with a clear thesis\n2. Organize your thoughts\n3. Use concrete examples\n4. Revise for clarity\n5. Proofread carefully\n\nWhat type of writing are you working on?",
-      general: "\n\n🎓 **Study Strategy:**\n1. Break topics into manageable chunks\n2. Use active recall techniques\n3. Practice spaced repetition\n4. Connect new info to what you know\n5. Teach concepts to others\n\nWhat subject would you like to focus on?"
-    };
-
-    return randomResponse + (additionalContent[subject] || additionalContent.general);
-  };
-
+  // Backend-powered responses via API
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
     try {
-      // Track usage with backend (fallback to local if request fails)
-      let allow = true;
-      try {
-        const usageResponse = await paymentsAPI.trackAITutorUsage();
-        if (!usageResponse.success) {
-          allow = false;
-        } else if (usageResponse?.data) {
-          setUsage(prev => ({
-            ...prev,
-            daily: prev.daily + 1,
-            total: prev.total + 1,
-            remainingToday: usageResponse.data.remainingToday === 'unlimited'
-              ? prev.remainingToday
-              : usageResponse.data.remainingToday
-          }));
-        }
-      } catch (e) {
-        // Network or server error -> use local fallback limit
-        if (!isPremium && usage.remainingToday <= 0) {
-          allow = false;
-        } else {
-          setUsage(prev => ({
-            ...prev,
-            daily: prev.daily + 1,
-            total: prev.total + 1,
-            remainingToday: Math.max(0, prev.remainingToday - 1)
-          }));
-        }
-      }
+      // Build and show user message first
 
-      if (!allow) {
-      const limitMessage = {
+      const userMessage = {
         id: Date.now(),
-        type: 'ai',
-          content: "🚫 **Daily Limit Reached**\n\nYou've reached your daily limit of 20 questions on the free plan.\n\n💎 **Upgrade to Premium** for unlimited questions and advanced features!\n\n📅 Your limit will reset tomorrow.",
+        type: 'user',
+        content: newMessage,
         timestamp: new Date(),
         subject: selectedSubject
       };
-      setMessages(prev => [...prev, limitMessage]);
-      return;
-    }
 
-    const userMessage = {
-      id: Date.now(),
-      type: 'user',
-      content: newMessage,
-      timestamp: new Date(),
-      subject: selectedSubject
-    };
+      setMessages(prev => [...prev, userMessage]);
+      setNewMessage('');
+      setIsTyping(true);
 
-    setMessages(prev => [...prev, userMessage]);
-    setNewMessage('');
-    setIsTyping(true);
+      // Call backend AI
+      const resp = await aiAPI.ask({ question: userMessage.content, subject: selectedSubject });
 
-    // Simulate AI thinking delay
-    setTimeout(() => {
+      if (!resp.success) {
+        // If 403 limit, show upgrade message
+        const limitText = resp.message || 'Daily limit reached. Upgrade to premium for unlimited access.';
+        const limitMessage = {
+          id: Date.now(),
+          type: 'ai',
+          content: `🚫 ${limitText}`,
+          timestamp: new Date(),
+          subject: selectedSubject
+        };
+        setMessages(prev => [...prev, limitMessage]);
+        setIsTyping(false);
+        return;
+      }
+
       const aiResponse = {
         id: Date.now() + 1,
         type: 'ai',
-        content: generateAIResponse(newMessage, selectedSubject),
+        content: resp.data?.answer || 'Here is my response.',
         timestamp: new Date(),
-        subject: selectedSubject
+        subject: selectedSubject,
+        provider: resp.data?.provider,
+        model: resp.data?.model
       };
 
       setMessages(prev => [...prev, aiResponse]);
       setIsTyping(false);
-    }, 1500 + Math.random() * 1000);
+      // Refresh usage from backend so UI stays accurate
+      loadUsageData();
 
     } catch (error) {
       console.error('Error sending message:', error);
@@ -192,6 +134,7 @@ const AITutor = () => {
         subject: selectedSubject
       };
       setMessages(prev => [...prev, errorMessage]);
+      setIsTyping(false);
     }
   };
 
@@ -229,6 +172,18 @@ const AITutor = () => {
                 ? 'bg-primary-500 text-white' 
                 : 'bg-white border border-gray-200 text-gray-900'
             }`}>
+              {!isUser && (message.provider || (message.provider === 'openai' && message.model)) && (
+                <div className="flex items-center space-x-2 mb-1">
+                  <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                    🤖 {message.provider === 'openai' ? 'OpenAI' : 'AI Assistant'}
+                  </span>
+                  {message.provider === 'openai' && message.model && (
+                    <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full border border-gray-200">
+                      {message.model}
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="whitespace-pre-wrap">{message.content}</div>
               <div className={`text-xs mt-2 ${isUser ? 'text-white/70' : 'text-gray-500'}`}>
                 {message.timestamp.toLocaleTimeString('en-US', { 
@@ -396,6 +351,11 @@ const AITutor = () => {
                   </div>
                 </div>
               </form>
+              {toast && (
+                <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/80 text-white text-sm rounded-full shadow-lg">
+                  {toast.text}
+                </div>
+              )}
             </div>
           </div>
         </div>

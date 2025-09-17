@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import PaymentModal from '../../components/Common/PaymentModal';
 
 const Upgrade = () => {
@@ -95,7 +95,7 @@ const Upgrade = () => {
       </div>
 
       <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-        <p>Payments are securely processed via OPay. Your payment information is encrypted and secure.</p>
+        <p>Payments are securely processed via Paystack. Your payment information is encrypted and secure.</p>
       </div>
 
       <PaymentModal

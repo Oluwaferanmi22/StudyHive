@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../pages/contexts/ThemeContext';
 
 const ThemeToggle = ({ className = '', showLabel = false, size = 'md' }) => {
   const { theme, toggleTheme, isTransitioning } = useTheme();

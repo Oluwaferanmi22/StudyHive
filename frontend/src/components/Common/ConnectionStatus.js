@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import socketService from '../../services/socketService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../pages/contexts/AuthContext';
 import { ConnectionLoader } from './Loaders';
 
 const ConnectionStatus = () => {

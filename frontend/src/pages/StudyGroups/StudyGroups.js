@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AIMatchingQuiz from '../../components/StudyGroups/AIMatchingQuiz';
 import { SkeletonCard, ButtonLoader, InlineLoader } from '../../components/Common/Loaders';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { hivesAPI } from '../../services/apiService';
 
 const StudyGroups = () => {

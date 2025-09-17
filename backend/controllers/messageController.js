@@ -71,6 +71,7 @@ const generateSimpleAIResponse = (userMessage) => {
     mitosis: 'Mitosis is the cell division process that produces two genetically identical daughter cells.',
     osmosis: 'Osmosis is the movement of water across a semipermeable membrane from low solute concentration to high.',
     ecosystem: 'An ecosystem is a community of organisms interacting with each other and their physical environment.',
+    biology: 'Biology is the study of living organisms—their structure, function, growth, evolution, and interactions.',
     democracy: 'Democracy is a system of government in which power is vested in the people, typically via elected representatives.',
     algorithm: 'An algorithm is a step-by-step procedure for solving a problem or performing a computation.',
     variable: 'A variable is a named storage location that holds a value which can change during program execution.',
@@ -93,12 +94,21 @@ const generateSimpleAIResponse = (userMessage) => {
       if (defs[key]) return defs[key];
       // Try simple singularization for plural nouns ending with 's'
       if (key.endsWith('s') && defs[key.slice(0, -1)]) return defs[key.slice(0, -1)];
-      return `Here’s a concise answer: ${text}`; // fallback, still direct
+      // Generic direct fallback (still answers, not echo)
+      return `A concise answer: ${text.replace(/^what is\s+/i, '').replace(/^define\s+/i, '') || 'this topic'} — an overview involves a plain definition, 2–3 key points, and a short example.`;
     }
   }
 
-  // Default: concise echo encouraging specificity, without fluff
-  return 'Please provide a specific “what is/define …” question for a precise one‑line answer.';
+  // Single-word or short topic queries like "biology"
+  if (q && q.length <= 40) {
+    let key = q.replace(/^(a|an|the)\s+/i, '').trim();
+    if (defs[key]) return defs[key];
+    if (key.endsWith('s') && defs[key.slice(0, -1)]) return defs[key.slice(0, -1)];
+    return `A concise overview of ${text}: definition, 2–3 key points, and a short example.`;
+  }
+
+  // Default: concise guidance without echo
+  return 'Ask anything—try “what is photosynthesis?” or “explain recursion with an example.”';
 };
 
 // OpenAI response generator with safe fallback
@@ -326,7 +336,9 @@ const sendMessage = async (req, res) => {
       const result = await generateAIResponse(content);
       messageData.content = result.content;
       messageData.aiResponse = {
+        answer: result.content,
         model: result.meta?.model || 'study-hive-ai',
+        provider: result.meta?.provider || 'builtin',
         confidence: 0.9,
         context: result.meta?.provider || 'group-chat'
       };

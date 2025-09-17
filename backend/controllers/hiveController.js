@@ -1,6 +1,7 @@
 const StudyHive = require('../models/StudyHive');
 const User = require('../models/User');
 const Message = require('../models/Message');
+const Notification = require('../models/Notification');
 
 // @desc    Get all study hives (with filtering and search)
 // @route   GET /api/hives
@@ -282,6 +283,40 @@ const joinHive = async (req, res) => {
       });
 
       await hive.save();
+
+      // Notify creator/admins via Socket.IO
+      try {
+        const io = req.app.get('io');
+        if (io) {
+          const latestReq = hive.joinRequests[hive.joinRequests.length - 1];
+          const payload = {
+            hiveId: hive._id.toString(),
+            requestId: latestReq._id.toString(),
+            requesterId: req.user.id,
+            requesterName: req.user.username || 'User',
+            message,
+            requestedAt: latestReq.requestedAt
+          };
+          // Notify creator
+          io.to(hive.creator.toString()).emit('hive_join_request', payload);
+          // Optionally notify admins/mods too
+          const moderators = hive.members.filter(m => ['admin','moderator'].includes(m.role)).map(m => m.userId.toString());
+          moderators.forEach(uid => io.to(uid).emit('hive_join_request', payload));
+        }
+      } catch (_) {}
+
+      // Persist notifications for creator and moderators
+      try {
+        const latestReq = hive.joinRequests[hive.joinRequests.length - 1];
+        const targets = new Set([hive.creator.toString(), ...hive.members.filter(m => ['admin','moderator'].includes(m.role)).map(m => m.userId.toString())]);
+        const docs = Array.from(targets).map(uid => ({
+          user: uid,
+          type: 'join_request',
+          text: `${req.user.username || 'A user'} requested to join your hive`,
+          meta: { hiveId: hive._id, requestId: latestReq._id, requesterId: req.user.id },
+        }));
+        if (docs.length) await Notification.insertMany(docs);
+      } catch (_) {}
 
       return res.status(200).json({
         success: true,
@@ -599,6 +634,41 @@ const manageJoinRequest = async (req, res) => {
     request.reviewedBy = req.user.id;
     request.reviewedAt = new Date();
     await hive.save();
+
+    // Notify requester and creator/mods
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        const payload = {
+          hiveId: hive._id.toString(),
+          requestId: request._id.toString(),
+          requesterId: request.userId.toString(),
+          action,
+          status: request.status,
+          reviewedBy: req.user.id,
+          reviewedAt: request.reviewedAt
+        };
+        // Notify requester about outcome
+        io.to(request.userId.toString()).emit('hive_join_request_update', payload);
+        // Notify creator and moderators for bookkeeping
+        io.to(hive.creator.toString()).emit('hive_join_request_update', payload);
+        const moderators = hive.members.filter(m => ['admin','moderator'].includes(m.role)).map(m => m.userId.toString());
+        moderators.forEach(uid => io.to(uid).emit('hive_join_request_update', payload));
+      }
+    } catch (_) {}
+
+    // Persist notifications for requester and creator/moderators
+    try {
+      const targets = new Set([request.userId.toString(), hive.creator.toString(), ...hive.members.filter(m => ['admin','moderator'].includes(m.role)).map(m => m.userId.toString())]);
+      const textFor = (uid) => uid === request.userId.toString() ? `Your join request was ${action}d` : `A join request was ${action}d`;
+      const docs = Array.from(targets).map(uid => ({
+        user: uid,
+        type: 'join_request_update',
+        text: textFor(uid),
+        meta: { hiveId: hive._id, requestId: request._id, status: request.status, reviewedBy: req.user.id },
+      }));
+      if (docs.length) await Notification.insertMany(docs);
+    } catch (_) {}
 
     res.status(200).json({
       success: true,

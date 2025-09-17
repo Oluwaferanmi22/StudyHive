@@ -1,9 +1,33 @@
 const User = require('../models/User');
 const axios = require('axios');
+const { getProvider } = require('../services/payments');
 
-// Paystack configuration
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'sk_test_your_secret_key';
-const PAYSTACK_PUBLIC_KEY = process.env.PAYSTACK_PUBLIC_KEY || 'pk_test_your_public_key';
+// Payment provider (default: paystack)
+const paymentsProvider = getProvider();
+
+// @desc    Get payments configuration (display only)
+// @route   GET /api/payments/config
+// @access  Public (no secrets revealed)
+const getConfig = async (req, res) => {
+  try {
+    const provider = (process.env.PAYMENTS_PROVIDER || 'paystack').toLowerCase();
+    const priceMajor = Number(process.env.PREMIUM_PRICE_MAJOR || 5000);
+    const currency = provider === 'stripe'
+      ? (process.env.STRIPE_CURRENCY || 'usd').toUpperCase()
+      : 'NGN';
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        provider,
+        currency,
+        priceMajor,
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
 
 // @desc    Initialize Paystack payment
 // @route   POST /api/payments/initialize
@@ -20,63 +44,52 @@ const initializePayment = async (req, res) => {
       });
     }
 
-    // Validate amount (should be 5000 NGN for premium)
-    if (amount !== 5000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid amount for premium plan'
-      });
+    // Validate amount
+    const provider = (process.env.PAYMENTS_PROVIDER || 'paystack').toLowerCase();
+    const expected = Number(process.env.PREMIUM_PRICE_MAJOR || 5000);
+    if (provider === 'paystack') {
+      if (Number(amount) !== expected) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid amount for premium plan'
+        });
+      }
+    } else {
+      // For Stripe or others, allow positive amount and rely on env STRIPE_CURRENCY and PREMIUM_PRICE_MAJOR
+      if (!(Number(amount) > 0)) {
+        return res.status(400).json({ success: false, message: 'Invalid amount' });
+      }
     }
 
     // Create payment reference
     const reference = `studyhive_${userId}_${Date.now()}`;
 
-    // Initialize payment with Paystack
-    const paymentData = {
-      email,
-      amount: amount * 100, // Convert to kobo
-      reference,
-      callback_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/callback`,
-      metadata: {
-        userId,
-        plan,
-        custom_fields: [
-          {
-            display_name: 'User ID',
-            variable_name: 'user_id',
-            value: userId
-          },
-          {
-            display_name: 'Plan',
-            variable_name: 'plan',
-            value: plan
-          }
-        ]
-      }
+    const callbackUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/callback`;
+    const metadata = {
+      userId,
+      plan,
+      custom_fields: [
+        { display_name: 'User ID', variable_name: 'user_id', value: userId },
+        { display_name: 'Plan', variable_name: 'plan', value: plan }
+      ]
     };
 
-    const response = await axios.post('https://api.paystack.co/transaction/initialize', paymentData, {
-      headers: {
-        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-        'Content-Type': 'application/json'
-      }
+    const init = await paymentsProvider.initializePayment({
+      email,
+      amount, // in base currency unit; provider will convert as needed
+      reference,
+      callbackUrl,
+      metadata
     });
 
-    if (response.data.status) {
-      res.status(200).json({
-        success: true,
-        data: {
-          authorization_url: response.data.data.authorization_url,
-          access_code: response.data.data.access_code,
-          reference: response.data.data.reference
-        }
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: 'Failed to initialize payment'
-      });
-    }
+    res.status(200).json({
+      success: true,
+      data: {
+        authorization_url: init.authorizationUrl,
+        access_code: init.accessCode,
+        reference: init.reference
+      }
+    });
   } catch (error) {
     console.error('Payment initialization error:', error);
     res.status(500).json({
@@ -102,15 +115,10 @@ const verifyPayment = async (req, res) => {
       });
     }
 
-    // Verify payment with Paystack
-    const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
-      headers: {
-        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    // Verify payment via provider
+    const verification = await paymentsProvider.verifyPayment(reference);
 
-    if (response.data.status && response.data.data.status === 'success') {
+    if (verification.success) {
       const user = await User.findById(userId);
       if (!user) {
         return res.status(404).json({
@@ -245,5 +253,6 @@ module.exports = {
   initializePayment,
   verifyPayment,
   getUserUsage,
-  trackAITutorUsage
+  trackAITutorUsage,
+  getConfig
 };
