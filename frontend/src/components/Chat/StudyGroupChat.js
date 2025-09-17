@@ -23,8 +23,8 @@ const StudyGroupChat = ({ groupId, groupName }) => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [aiMessage, setAiMessage] = useState('');
-  // Default ON; will be overridden by saved preference if present
-  const [autoAIEnabled, setAutoAIEnabled] = useState(true);
+  // Default OFF and enforced
+  const [autoAIEnabled, setAutoAIEnabled] = useState(false);
   const messagesEndRef = useRef(null);
   const [toast, setToast] = useState(null); // { text, delta, levelUp }
   const typingTimeoutRef = useRef(null);
@@ -80,16 +80,9 @@ const StudyGroupChat = ({ groupId, groupName }) => {
     return () => socketService.off('gamification:update', handler);
   }, []);
 
-  // Load and persist Auto AI preference per group
+  // Enforce Auto AI OFF regardless of any previous preference
   useEffect(() => {
-    const key = `autoAIEnabled_${groupId}`;
-    const saved = localStorage.getItem(key);
-    if (saved !== null) {
-      setAutoAIEnabled(saved === 'true');
-    } else {
-      // default ON if no preference saved
-      setAutoAIEnabled(true);
-    }
+    setAutoAIEnabled(false);
   }, [groupId]);
 
   // Load group members
@@ -198,7 +191,7 @@ const StudyGroupChat = ({ groupId, groupName }) => {
     try {
       // If the message starts with "/ai", route it to the AI (free in group chat)
       const aiPrefixMatch = messageText.trim().match(/^\/(ai|ask)\s+(.*)$/i);
-      const shouldRouteToAI = autoAIEnabled || !!aiPrefixMatch;
+      const shouldRouteToAI = !!aiPrefixMatch;
       if (shouldRouteToAI) {
         const aiPrompt = aiPrefixMatch ? aiPrefixMatch[2] : messageText.trim();
 
@@ -705,7 +698,7 @@ const StudyGroupChat = ({ groupId, groupName }) => {
               type="text"
               value={newMessage}
               onChange={handleInputChange}
-              placeholder={autoAIEnabled ? "Ask the AI anything... (AI Mode ON)" : "Type your message... (use @ to tag members, /ai question for AI)"}
+              placeholder={"Type your message... (use @ to tag members, /ai question for AI)"}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               disabled={!isConnected || isSending}
               onFocus={() => setShowMemberList(newMessage.includes('@'))}
