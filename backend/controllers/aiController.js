@@ -87,10 +87,12 @@ const ask = async (req, res) => {
 // @access  Public
 const health = async (req, res) => {
   try {
-    const forced = String(process.env.AI_FORCE_BUILTIN || '').toLowerCase() === 'true';
-    const provider = forced ? 'builtin' : (process.env.OPENAI_API_KEY ? 'openai' : 'builtin');
-    const model = provider === 'openai' ? (process.env.OPENAI_MODEL || 'gpt-3.5-turbo') : 'study-hive-ai';
-    return res.status(200).json({ success: true, data: { provider, model, forcedBuiltin: forced } });
+    const info = aiTutorService.getProviderInfo ? aiTutorService.getProviderInfo() : {
+      provider: (process.env.OPENAI_API_KEY ? 'openai' : 'builtin'),
+      model: (process.env.OPENAI_API_KEY ? (process.env.OPENAI_MODEL || 'gpt-3.5-turbo') : 'study-hive-ai'),
+      forcedBuiltin: String(process.env.AI_FORCE_BUILTIN || '').toLowerCase() === 'true',
+    };
+    return res.status(200).json({ success: true, data: info });
   } catch (e) {
     return res.status(200).json({ success: true, data: { provider: 'builtin', model: 'study-hive-ai' } });
   }

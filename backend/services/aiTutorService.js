@@ -1,11 +1,79 @@
-// Simple AI Tutor service with pluggable provider.
+// Simple AI Tutor service with pluggable provider (Gemini, OpenAI, or Builtin fallback).
 // Returns structured responses with subject-aware tips. Now accepts any topic.
 let OpenAIClient = null;
+let GoogleGenerativeAI = null;
 const FORCE_BUILTIN = String(process.env.AI_FORCE_BUILTIN || '').toLowerCase() === 'true';
 try {
   OpenAIClient = require('openai');
 } catch (e) {
   OpenAIClient = null;
+}
+try {
+  ({ GoogleGenerativeAI } = require('@google/generative-ai'));
+} catch (e) {
+  GoogleGenerativeAI = null;
+}
+
+function getRequestedProvider() {
+  const p = String(process.env.AI_PROVIDER || '').toLowerCase();
+  if (p === 'gemini' || p === 'openai' || p === 'builtin') return p;
+  return '';
+}
+
+function getAvailableProvider() {
+  if (FORCE_BUILTIN) return 'builtin';
+  const requested = getRequestedProvider();
+  const hasGemini = !!(process.env.GEMINI_API_KEY && GoogleGenerativeAI);
+  const hasOpenAI = !!(process.env.OPENAI_API_KEY && OpenAIClient);
+  if (requested === 'builtin') return 'builtin';
+  if (requested === 'gemini') return hasGemini ? 'gemini' : (hasOpenAI ? 'openai' : 'builtin');
+  if (requested === 'openai') return hasOpenAI ? 'openai' : (hasGemini ? 'gemini' : 'builtin');
+  // Default preference: Gemini, then OpenAI, then builtin
+  if (hasGemini) return 'gemini';
+  if (hasOpenAI) return 'openai';
+  return 'builtin';
+}
+
+async function callGemini({ question, subject = 'general', direct = false }) {
+  try {
+    if (!process.env.GEMINI_API_KEY || !GoogleGenerativeAI) return null;
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const modelId = process.env.GEMINI_MODEL || (direct ? 'gemini-1.5-flash' : 'gemini-1.5-pro');
+    const model = genAI.getGenerativeModel({ model: modelId, systemInstruction: direct
+      ? "You are a helpful, accurate AI study tutor. Provide a direct answer without preamble or headings. No 'Q:'/'A:' labels. Be concise but clear; include a minimal example only if helpful."
+      : "You are a helpful, accurate AI study tutor. Match the user's requested format and level of detail. If no format is specified, give a clear, step-by-step explanation with key points, examples, and a brief summary." });
+    const prompt = `Subject: ${subject}\nQuestion: ${question}`;
+    const generationConfig = { temperature: direct ? 0.2 : 0.3, maxOutputTokens: direct ? 250 : 600 };
+    const result = await model.generateContent({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig });
+    const text = (result?.response?.text && typeof result.response.text === 'function') ? result.response.text() : '';
+    const content = String(text || '').trim();
+    if (content) return { answer: content, model: modelId };
+  } catch (e) {
+    console.error('[AI][Tutor] Gemini error:', e?.message || e);
+  }
+  return null;
+}
+
+async function callOpenAI({ question, subject = 'general', direct = false }) {
+  try {
+    if (!process.env.OPENAI_API_KEY || !OpenAIClient) return null;
+    const openai = new OpenAIClient({ apiKey: process.env.OPENAI_API_KEY });
+    const system = direct
+      ? "You are a helpful, accurate AI study tutor. Provide a direct answer without preamble or headings. No 'Q:'/'A:' labels. Be concise but clear; include a minimal example only if helpful. Include at most 1 Markdown image link only if it truly clarifies the concept."
+      : "You are a helpful, accurate AI study tutor. Match the user's requested format and level of detail. If no format is specified, give a clear, step-by-step explanation with key points, examples, and a brief summary. When a simple visual helps, include up to 2 relevant images as Markdown links like ![alt](URL) using reputable sources (e.g., Wikimedia/Wikipedia). Do not include images if they are not helpful.";
+    const userPrompt = `Subject: ${subject}\nQuestion: ${question}`;
+    const completion = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+      messages: [ { role: 'system', content: system }, { role: 'user', content: userPrompt } ],
+      temperature: direct ? 0.2 : 0.3,
+      max_tokens: direct ? 250 : 600,
+    });
+    const content = (completion.choices?.[0]?.message?.content || '').trim();
+    if (content) return { answer: content, model: completion.model || (process.env.OPENAI_MODEL || 'gpt-3.5-turbo') };
+  } catch (e) {
+    console.error('[AI][Tutor] OpenAI error:', e?.message || e);
+  }
+  return null;
 }
 
 function generateEducationalResponse(question = '', subject = 'general') {
@@ -135,28 +203,23 @@ ${add}`;
 
 async function generateAnswer(question, subject = 'general') {
   try {
-    if (!FORCE_BUILTIN && process.env.OPENAI_API_KEY && OpenAIClient) {
-      const openai = new OpenAIClient({ apiKey: process.env.OPENAI_API_KEY });
-      const system = 'You are a helpful, accurate AI study tutor. Match the user\'s requested format and level of detail. If no format is specified, give a clear, step-by-step explanation with key points, examples, and a brief summary. When a simple visual helps, include up to 2 relevant images as Markdown links like ![alt](URL) using reputable sources (e.g., Wikimedia/Wikipedia). Do not include images if they are not helpful.';
-      const userPrompt = `Subject: ${subject}\nQuestion: ${question}`;
-      const completion = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 600,
-      });
-      const content = (completion.choices?.[0]?.message?.content || '').trim();
-      if (content) {
-        console.log('[AI][Tutor] Using OpenAI provider in generateAnswer:', completion.model || (process.env.OPENAI_MODEL || 'gpt-3.5-turbo'));
-        return content;
+    const provider = getAvailableProvider();
+    if (provider === 'gemini') {
+      const res = await callGemini({ question, subject, direct: false });
+      if (res?.answer) {
+        console.log('[AI][Tutor] Using Gemini provider in generateAnswer:', res.model);
+        return res.answer;
+      }
+    }
+    if (provider === 'openai') {
+      const res = await callOpenAI({ question, subject, direct: false });
+      if (res?.answer) {
+        console.log('[AI][Tutor] Using OpenAI provider in generateAnswer:', res.model);
+        return res.answer;
       }
     }
   } catch (err) {
-    console.error('[AI][Tutor] OpenAI error in generateAnswer, falling back:', err?.message || err);
-    // fall back to local response if OpenAI fails
+    console.error('[AI][Tutor] Provider error in generateAnswer, falling back:', err?.message || err);
   }
   console.warn('[AI][Tutor] Returning builtin fallback from generateAnswer');
   return generateEducationalResponse(question, subject);
@@ -188,41 +251,42 @@ function generateDirectFallback(question = '', subject = 'general') {
 
 // Extended API returning metadata for UI badges
 async function generateAnswerWithMeta(question, subject = 'general', options = {}) {
+  const direct = options && options.direct;
   try {
-    if (process.env.OPENAI_API_KEY && OpenAIClient) {
-      const openai = new OpenAIClient({ apiKey: process.env.OPENAI_API_KEY });
-      const direct = options && options.direct;
-      const system = direct
-        ? "You are a helpful, accurate AI study tutor. Provide a direct answer without preamble or headings. No 'Q:'/'A:' labels. Be concise but clear; include a minimal example only if helpful. Include at most 1 Markdown image link only if it truly clarifies the concept."
-        : "You are a helpful, accurate AI study tutor. Match the user's requested format and level of detail. If no format is specified, give a clear, step-by-step explanation with key points, examples, and a brief summary. When a simple visual helps, include up to 2 relevant images as Markdown links like ![alt](URL) using reputable sources (e.g., Wikimedia/Wikipedia). Do not include images if they are not helpful.";
-      const userPrompt = `Subject: ${subject}\nQuestion: ${question}`;
-      const completion = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: direct ? 0.2 : 0.3,
-        max_tokens: direct ? 250 : 600,
-      });
-      const content = (completion.choices?.[0]?.message?.content || '').trim();
-      if (content) {
-        console.log('[AI][Tutor] Using OpenAI provider in generateAnswerWithMeta:', completion.model || (process.env.OPENAI_MODEL || 'gpt-3.5-turbo'));
-        return { answer: content, provider: 'openai', model: completion.model || (process.env.OPENAI_MODEL || 'gpt-3.5-turbo') };
+    const provider = getAvailableProvider();
+    if (provider === 'gemini') {
+      const res = await callGemini({ question, subject, direct });
+      if (res?.answer) {
+        console.log('[AI][Tutor] Using Gemini provider in generateAnswerWithMeta:', res.model);
+        return { answer: res.answer, provider: 'gemini', model: res.model };
+      }
+    }
+    if (provider === 'openai') {
+      const res = await callOpenAI({ question, subject, direct });
+      if (res?.answer) {
+        console.log('[AI][Tutor] Using OpenAI provider in generateAnswerWithMeta:', res.model);
+        return { answer: res.answer, provider: 'openai', model: res.model };
       }
     }
   } catch (e) {
-    console.error('[AI][Tutor] OpenAI error in generateAnswerWithMeta, falling back:', e?.message || e);
-    // ignore and fallback
+    console.error('[AI][Tutor] Provider error in generateAnswerWithMeta, falling back:', e?.message || e);
   }
   // Built-in fallback
-  const direct = options && options.direct;
   const answer = direct ? generateDirectFallback(question, subject) : generateEducationalResponse(question, subject);
   console.warn('[AI][Tutor] Returning builtin fallback from generateAnswerWithMeta');
   return { answer, provider: 'builtin', model: 'study-hive-ai' };
 }
 
 module.exports.generateAnswerWithMeta = generateAnswerWithMeta;
+function getProviderInfo() {
+  const provider = getAvailableProvider();
+  let model = 'study-hive-ai';
+  if (provider === 'gemini') model = process.env.GEMINI_MODEL || 'gemini-1.5-pro';
+  if (provider === 'openai') model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
+  return { provider, model, forcedBuiltin: FORCE_BUILTIN };
+}
+
+module.exports.getProviderInfo = getProviderInfo;
 
 // Simple heuristic to determine if a question is educational/study-related
 function isEducationalQuestion(question = '') {
