@@ -1,6 +1,7 @@
 const Message = require('../models/Message');
 const StudyHive = require('../models/StudyHive');
 const User = require('../models/User');
+const aiTutorService = require('../services/aiTutorService');
 const multer = require('multer');
 const path = require('path');
 let OpenAIClient = null;
@@ -115,6 +116,7 @@ const generateSimpleAIResponse = (userMessage) => {
 const generateAIResponse = async (userMessage) => {
   try {
     if (!process.env.OPENAI_API_KEY || !OpenAIClient) {
+      console.warn('[AI][Chat] Using builtin provider (missing OPENAI_API_KEY or OpenAIClient not loaded)');
       return { content: generateSimpleAIResponse(userMessage), meta: { provider: 'builtin', model: 'study-hive-ai' } };
     }
 
@@ -135,11 +137,14 @@ Question: ${userMessage}`;
 
     const content = (completion.choices?.[0]?.message?.content || '').trim();
     if (!content) {
+      console.warn('[AI][Chat] OpenAI returned empty content; falling back to builtin');
       return { content: generateSimpleAIResponse(userMessage), meta: { provider: 'builtin', model: 'study-hive-ai' } };
     }
+    console.log('[AI][Chat] Using OpenAI provider:', completion.model || (process.env.OPENAI_MODEL || 'gpt-3.5-turbo'));
     return { content, meta: { provider: 'openai', model: completion.model || (process.env.OPENAI_MODEL || 'gpt-3.5-turbo') } };
   } catch (err) {
     // Fallback on any error
+    console.error('[AI][Chat] OpenAI error, falling back to builtin:', err?.message || err);
     return { content: generateSimpleAIResponse(userMessage), meta: { provider: 'builtin', model: 'study-hive-ai' } };
   }
 };
@@ -333,15 +338,42 @@ const sendMessage = async (req, res) => {
 
     // Add AI response data if it's an AI message
     if (messageType === 'ai') {
-      const result = await generateAIResponse(content);
-      messageData.content = result.content;
-      messageData.aiResponse = {
-        answer: result.content,
-        model: result.meta?.model || 'study-hive-ai',
-        provider: result.meta?.provider || 'builtin',
-        confidence: 0.9,
-        context: result.meta?.provider || 'group-chat'
-      };
+      // Educational-only guard (configurable via AI_EDU_ONLY)
+      const EDU_ONLY = String(process.env.AI_EDU_ONLY || 'true').toLowerCase() !== 'false';
+      if (EDU_ONLY && !aiTutorService.isEducationalQuestion(content)) {
+        const guidance = aiTutorService.educationalGuidanceMessage('general');
+        messageData.content = guidance;
+        messageData.messageType = 'ai';
+        messageData.aiResponse = {
+          answer: guidance,
+          model: 'edu-guard',
+          provider: 'policy',
+          confidence: 1.0,
+          context: 'group-chat'
+        };
+      } else {
+        try {
+          const { answer, provider, model } = await aiTutorService.generateAnswerWithMeta(content, 'general');
+          messageData.content = answer;
+          messageData.aiResponse = {
+            answer,
+            model: model || 'study-hive-ai',
+            provider: provider || 'builtin',
+            confidence: 0.9,
+            context: 'group-chat'
+          };
+        } catch (e) {
+          const fallback = generateSimpleAIResponse(content);
+          messageData.content = fallback;
+          messageData.aiResponse = {
+            answer: fallback,
+            model: 'study-hive-ai',
+            provider: 'builtin',
+            confidence: 0.7,
+            context: 'group-chat'
+          };
+        }
+      }
     }
 
     // Add poll data if it's a poll message

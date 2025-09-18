@@ -32,6 +32,23 @@ const ask = async (req, res) => {
       });
     }
 
+    // Educational-only guard (configurable). Set AI_EDU_ONLY=false to disable this.
+    const EDU_ONLY = String(process.env.AI_EDU_ONLY || 'true').toLowerCase() !== 'false' ;
+    if (EDU_ONLY) {
+      if (!aiTutorService.isEducationalQuestion(question)) {
+        const answer = aiTutorService.educationalGuidanceMessage(subject);
+        return res.status(200).json({
+          success: true,
+          data: {
+            answer,
+            subject,
+            provider: 'policy',
+            model: 'edu-guard'
+          }
+        });
+      }
+    }
+
     // Generate answer with provider/model metadata
     const { answer, provider, model } = await aiTutorService.generateAnswerWithMeta(question, subject);
 
@@ -65,4 +82,19 @@ const ask = async (req, res) => {
   }
 };
 
-module.exports = { ask };
+// @desc    AI service health/provider info
+// @route   GET /api/ai/health
+// @access  Public
+const health = async (req, res) => {
+  try {
+    const forced = String(process.env.AI_FORCE_BUILTIN || '').toLowerCase() === 'true';
+    const provider = forced ? 'builtin' : (process.env.OPENAI_API_KEY ? 'openai' : 'builtin');
+    const model = provider === 'openai' ? (process.env.OPENAI_MODEL || 'gpt-3.5-turbo') : 'study-hive-ai';
+    return res.status(200).json({ success: true, data: { provider, model, forcedBuiltin: forced } });
+  } catch (e) {
+    return res.status(200).json({ success: true, data: { provider: 'builtin', model: 'study-hive-ai' } });
+  }
+};
+
+module.exports = { ask, health };
+ 

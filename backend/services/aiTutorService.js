@@ -26,7 +26,8 @@ function generateEducationalResponse(question = '', subject = 'general') {
     database: 'an organized collection of structured information stored and accessed electronically',
     api: 'an interface that lets one piece of software programmatically interact with another',
     gdp: 'the total monetary value of all final goods and services produced within a country in a given period',
-    inflation: 'a sustained increase in the general price level of goods and services over time'
+    inflation: 'a sustained increase in the general price level of goods and services over time',
+    'carbon chain': 'a series of carbon atoms covalently bonded together forming the backbone (skeleton) of organic molecules'
   };
 
   // Try to extract a topic from common question forms
@@ -98,6 +99,24 @@ Summary: Focus on understanding the idea in plain language, then practice with s
   const lead = list[Math.floor(Math.random() * list.length)];
   const add = additions[subject] || additions.general;
 
+  // If we have a topic but no canned definition, attempt a concise definition lead-in
+  if (topic) {
+    const guess = `${prettyTopic || 'This term'} generally refers to a concept studied in ${subject || 'education'}; understand its definition, key properties, and a simple example.`;
+    return `${lead}
+
+Here is a clear explanation in steps:
+1) Plain-language definition: ${guess}
+2) Key points: List 2–3 essential facts or properties.
+3) Quick example: Show a minimal example to illustrate.
+4) Common pitfalls: Mention one mistake to avoid.
+
+Applied to your question:
+- Topic: ${q || 'your topic'}
+- Subject context: ${subject || 'general'}
+
+${add}`;
+  }
+
   // More substantive generic response
   return `${lead}
 
@@ -130,11 +149,16 @@ async function generateAnswer(question, subject = 'general') {
         max_tokens: 600,
       });
       const content = (completion.choices?.[0]?.message?.content || '').trim();
-      if (content) return content;
+      if (content) {
+        console.log('[AI][Tutor] Using OpenAI provider in generateAnswer:', completion.model || (process.env.OPENAI_MODEL || 'gpt-3.5-turbo'));
+        return content;
+      }
     }
   } catch (err) {
+    console.error('[AI][Tutor] OpenAI error in generateAnswer, falling back:', err?.message || err);
     // fall back to local response if OpenAI fails
   }
+  console.warn('[AI][Tutor] Returning builtin fallback from generateAnswer');
   return generateEducationalResponse(question, subject);
 }
 
@@ -182,15 +206,77 @@ async function generateAnswerWithMeta(question, subject = 'general', options = {
         max_tokens: direct ? 250 : 600,
       });
       const content = (completion.choices?.[0]?.message?.content || '').trim();
-      if (content) return { answer: content, provider: 'openai', model: completion.model || (process.env.OPENAI_MODEL || 'gpt-3.5-turbo') };
+      if (content) {
+        console.log('[AI][Tutor] Using OpenAI provider in generateAnswerWithMeta:', completion.model || (process.env.OPENAI_MODEL || 'gpt-3.5-turbo'));
+        return { answer: content, provider: 'openai', model: completion.model || (process.env.OPENAI_MODEL || 'gpt-3.5-turbo') };
+      }
     }
   } catch (e) {
+    console.error('[AI][Tutor] OpenAI error in generateAnswerWithMeta, falling back:', e?.message || e);
     // ignore and fallback
   }
   // Built-in fallback
   const direct = options && options.direct;
   const answer = direct ? generateDirectFallback(question, subject) : generateEducationalResponse(question, subject);
+  console.warn('[AI][Tutor] Returning builtin fallback from generateAnswerWithMeta');
   return { answer, provider: 'builtin', model: 'study-hive-ai' };
 }
 
 module.exports.generateAnswerWithMeta = generateAnswerWithMeta;
+
+// Simple heuristic to determine if a question is educational/study-related
+function isEducationalQuestion(question = '') {
+  const q = String(question || '').toLowerCase();
+  if (!q.trim()) return false;
+
+  // Clear non-educational red flags
+  const disallow = [
+    'bet', 'betting', 'gamble', 'gambling', 'nsfw', 'porn', 'sex', 'explicit',
+    'hack', 'crack', 'pirate', 'cheat code', 'cheatcode', 'cheat engine',
+    'how to hack', 'ddos', 'sql injection', 'carding'
+  ];
+  if (disallow.some(w => q.includes(w))) return false;
+
+  // Educational intents and keywords
+  const intents = [
+    'what is', 'define', 'explain', 'how does', 'how do', 'how to', 'why is', 'solve', 'calculate',
+    'prove', 'derive', 'summarize', 'compare', 'contrast', 'difference between', 'example of'
+  ];
+  if (intents.some(w => q.startsWith(w))) return true;
+
+  const subjects = [
+    'math', 'algebra', 'geometry', 'calculus', 'statistics', 'probability',
+    'biology', 'photosynthesis', 'genetics', 'ecology', 'anatomy',
+    'chemistry', 'physics', 'thermodynamics', 'optics', 'electricity',
+    'computer science', 'programming', 'algorithm', 'data structure', 'database',
+    'economics', 'finance theory', 'gdp', 'inflation', 'microeconomics', 'macroeconomics',
+    'history', 'geography', 'government', 'civics', 'philosophy', 'logic', 'psychology',
+    'writing', 'literature', 'grammar', 'essay', 'thesis', 'citation', 'mla', 'apa',
+    'language', 'spanish', 'french', 'english', 'translation'
+  ];
+  if (subjects.some(w => q.includes(w))) return true;
+
+  // Allow short-topic academic terms e.g., "photosynthesis", "osmosis"
+  const short = q.replace(/[?.!]/g, '').trim();
+  if (short.split(/\s+/).length <= 3) {
+    const academicHints = ['osis', 'tion', 'theorem', 'lemma', 'proof', 'algorithm', 'cell', 'atom', 'molecule'];
+    if (academicHints.some(h => short.includes(h))) return true;
+  }
+
+  return false;
+}
+
+function educationalGuidanceMessage(subject = 'general') {
+  return (
+    'I can help with study and academic topics. Please ask a learning-related question.\n\n'
+    + 'Examples:\n'
+    + '- Explain photosynthesis in simple terms\n'
+    + '- Solve: 2x + 3 = 7\n'
+    + '- Compare mitosis and meiosis\n'
+    + '- Summarize the causes of World War II\n'
+    + '- What is Big-O notation?\n'
+  );
+}
+
+module.exports.isEducationalQuestion = isEducationalQuestion;
+module.exports.educationalGuidanceMessage = educationalGuidanceMessage;
