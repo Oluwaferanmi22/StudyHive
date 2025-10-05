@@ -8,7 +8,7 @@ const { POINTS, awardPoints } = require('../services/gamificationService');
 const ask = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { question, subject = 'general' } = req.body;
+    const { question, subject = 'general', direct = false } = req.body;
 
     if (!question || !question.trim()) {
       return res.status(400).json({ success: false, message: 'Question is required' });
@@ -49,8 +49,8 @@ const ask = async (req, res) => {
       }
     }
 
-    // Generate answer with provider/model metadata
-    const { answer, provider, model } = await aiTutorService.generateAnswerWithMeta(question, subject);
+    // Generate answer with provider/model metadata (support concise/direct style)
+    const { answer, provider, model } = await aiTutorService.generateAnswerWithMeta(question, subject, { direct });
 
     // Increment usage after a successful answer
     const beforeDaily = user.usage?.aiTutorMessages?.daily?.count || 0;

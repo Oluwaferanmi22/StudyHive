@@ -40,8 +40,28 @@ export const AuthProvider = ({ children }) => {
           }
         } catch (error) {
           console.error('Error verifying token:', error);
-          localStorage.removeItem('studyhive_token');
-          localStorage.removeItem('studyhive_user');
+          // Only clear auth on explicit auth failures. Keep token on transient network errors and retry.
+          const status = error?.response?.status || 0;
+          if (status === 401 || status === 403) {
+            localStorage.removeItem('studyhive_token');
+            localStorage.removeItem('studyhive_user');
+          } else {
+            // Schedule a non-blocking retry; user remains tentatively authenticated until next interaction
+            setTimeout(async () => {
+              try {
+                const retryRes = await authAPI.getProfile();
+                if (retryRes?.success) {
+                  setUser(retryRes.user);
+                  localStorage.setItem('studyhive_user', JSON.stringify(retryRes.user));
+                  // Ensure socket connection if token still present
+                  const tk = localStorage.getItem('studyhive_token');
+                  if (tk) socketService.connect(tk);
+                }
+              } catch (_) {
+                // Swallow retry error; next app activity can attempt again
+              }
+            }, 3000);
+          }
         }
       }
       setIsLoading(false);

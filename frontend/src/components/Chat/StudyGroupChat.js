@@ -410,10 +410,23 @@ const StudyGroupChat = ({ groupId, groupName }) => {
             aiResponse: res.data.aiResponse
           }
         ]);
+        setAiMessage('');
+        setShowAIAssistant(false);
+      } else {
+        // Surface backend error as a chat bubble for visibility
+        const errorId = `ai_err_${Date.now()}`;
+        setMessages(prev => [
+          ...prev,
+          {
+            id: errorId,
+            user: { id: 'ai', name: 'AI Assistant' },
+            message: res.message || 'AI could not answer right now. Please try again.',
+            timestamp: new Date(),
+            type: 'ai',
+            messageType: 'ai'
+          }
+        ]);
       }
-
-      setAiMessage('');
-      setShowAIAssistant(false);
     } catch (error) {
       console.error('Error sending AI message:', error);
       // Add error message
@@ -546,12 +559,12 @@ const StudyGroupChat = ({ groupId, groupName }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg border border-gray-200">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
       {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
         <div>
-          <h3 className="font-semibold text-gray-900">{groupName} Chat</h3>
-          <p className="text-sm text-gray-600">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{groupName} Chat</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
             <span className={`inline-block w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
             {onlineUsers.length} members online
           </p>
@@ -600,8 +613,8 @@ const StudyGroupChat = ({ groupId, groupName }) => {
       {/* Image Upload Modal */}
       {showImageUpload && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Send Image</h3>
+          <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Send Image</h3>
             {selectedImage && (
               <img
                 src={URL.createObjectURL(selectedImage)}
@@ -613,7 +626,7 @@ const StudyGroupChat = ({ groupId, groupName }) => {
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Add a caption (optional)..."
-              className="w-full p-3 border border-gray-300 rounded-lg mb-4"
+              className="w-full p-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 rounded-lg mb-4"
               rows="3"
             />
             <div className="flex space-x-2">
@@ -622,7 +635,7 @@ const StudyGroupChat = ({ groupId, groupName }) => {
                   setShowImageUpload(false);
                   setSelectedImage(null);
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 Cancel
               </button>
@@ -641,19 +654,19 @@ const StudyGroupChat = ({ groupId, groupName }) => {
       {/* AI Assistant Modal */}
       {showAIAssistant && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Ask AI Assistant</h3>
+          <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Ask AI Assistant</h3>
             <textarea
               value={aiMessage}
               onChange={(e) => setAiMessage(e.target.value)}
               placeholder="Ask the AI assistant anything..."
-              className="w-full p-3 border border-gray-300 rounded-lg mb-4"
+              className="w-full p-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 rounded-lg mb-4"
               rows="4"
             />
             <div className="flex space-x-2">
               <button
                 onClick={() => setShowAIAssistant(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 Cancel
               </button>
@@ -671,19 +684,19 @@ const StudyGroupChat = ({ groupId, groupName }) => {
 
       {/* Member List Modal */}
       {showMemberList && (
-        <div className="absolute bottom-16 left-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-40">
+        <div className="absolute bottom-16 left-4 right-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto z-40">
           <div className="p-2">
-            <h4 className="text-sm font-semibold text-gray-700 mb-2">Tag Members</h4>
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Tag Members</h4>
             {members.map((member) => (
               <button
                 key={member.userId._id}
                 onClick={() => insertMention(member)}
-                className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center space-x-2"
+                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg flex items-center space-x-2"
               >
                 <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white text-sm">
                   {member.userId.profile?.firstName?.charAt(0) || member.userId.username.charAt(0)}
                 </div>
-                <span className="text-sm">{member.userId.profile?.firstName || member.userId.username}</span>
+                <span className="text-sm text-gray-900 dark:text-gray-100">{member.userId.profile?.firstName || member.userId.username}</span>
               </button>
             ))}
           </div>
@@ -699,24 +712,24 @@ const StudyGroupChat = ({ groupId, groupName }) => {
               value={newMessage}
               onChange={handleInputChange}
               placeholder={"Type your message... (use @ to tag members, /ai question for AI)"}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               disabled={!isConnected || isSending}
               onFocus={() => setShowMemberList(newMessage.includes('@'))}
             />
             {showMemberList && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-40">
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto z-40">
                 <div className="p-2">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Tag Members</h4>
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Tag Members</h4>
                   {members.map((member) => (
                     <button
                       key={member.userId._id}
                       onClick={() => insertMention(member)}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg flex items-center space-x-2"
+                      className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg flex items-center space-x-2"
                     >
                       <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white text-sm">
                         {member.userId.profile?.firstName?.charAt(0) || member.userId.username.charAt(0)}
                       </div>
-                      <span className="text-sm">{member.userId.profile?.firstName || member.userId.username}</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{member.userId.profile?.firstName || member.userId.username}</span>
                     </button>
                   ))}
                 </div>

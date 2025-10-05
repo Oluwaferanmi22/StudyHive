@@ -1,4 +1,4 @@
-import api from '../api';
+import api, { getApiOrigin } from '../api';
 
 // Authentication API
 export const authAPI = {
@@ -58,9 +58,9 @@ export const notificationsAPI = {
 
 // AI Tutor API
 export const aiAPI = {
-  ask: async ({ question, subject = 'general' }) => {
+  ask: async ({ question, subject = 'general', direct = false }) => {
     try {
-      const response = await api.post('/ai/ask', { question, subject });
+      const response = await api.post('/ai/ask', { question, subject, direct });
       return response.data;
     } catch (error) {
       const status = error?.response?.status || 0;
@@ -308,8 +308,10 @@ export const resourcesAPI = {
 // Health check
 export const healthAPI = {
   check: async () => {
-    const response = await api.get('/health');
-    return response.data;
+    // Use the API origin directly because backend health is mounted at "/health" (not under "/api")
+    const origin = getApiOrigin();
+    const response = await fetch(`${origin}/health`);
+    return response.json();
   }
 };
 

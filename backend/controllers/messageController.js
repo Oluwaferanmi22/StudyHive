@@ -24,15 +24,15 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  // Allow images, documents, and common file types
-  const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt|ppt|pptx|xls|xlsx|zip|rar/;
+  // Allow images, audio, documents, and common file types
+  const allowedTypes = /jpeg|jpg|png|gif|webm|ogg|mp3|wav|m4a|aac|pdf|doc|docx|txt|ppt|pptx|xls|xlsx|zip|rar/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
 
   if (mimetype && extname) {
     return cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only images, documents, and common file types are allowed.'));
+    cb(new Error('Invalid file type. Only images, audio, and common document types are allowed.'));
   }
 };
 
@@ -353,7 +353,8 @@ const sendMessage = async (req, res) => {
         };
       } else {
         try {
-          const { answer, provider, model } = await aiTutorService.generateAnswerWithMeta(content, 'general');
+          // Request a direct, concise answer suitable for chat bubbles
+          const { answer, provider, model } = await aiTutorService.generateAnswerWithMeta(content, 'general', { direct: true });
           messageData.content = answer;
           messageData.aiResponse = {
             answer,

@@ -32,7 +32,7 @@ router.get('/hive/:hiveId/stats', protect, getMessageStats);
 router.get('/:id/thread', protect, getMessageThread);
 
 // CRUD
-router.post('/', protect, sendMessage);
+router.post('/', protect, uploadSingleFile, sendMessage);
 router.put('/:id', protect, editMessage);
 router.delete('/:id', protect, deleteMessage);
 

@@ -8,6 +8,8 @@ try {
 } catch (e) {
   OpenAIClient = null;
 }
+// Note: @google/generative-ai is ESM-only. `require` may fail in CommonJS.
+// We'll try require first, and lazily dynamic-import inside callGemini if needed.
 try {
   ({ GoogleGenerativeAI } = require('@google/generative-ai'));
 } catch (e) {
@@ -23,8 +25,10 @@ function getRequestedProvider() {
 function getAvailableProvider() {
   if (FORCE_BUILTIN) return 'builtin';
   const requested = getRequestedProvider();
-  const hasGemini = !!(process.env.GEMINI_API_KEY && GoogleGenerativeAI);
-  const hasOpenAI = !!(process.env.OPENAI_API_KEY && OpenAIClient);
+  // Consider a provider "available" if credentials exist; defer SDK loading to the call site.
+  // Gemini's SDK is ESM-only and may not be present at require-time, but we can dynamic-import later.
+  const hasGemini = !!process.env.GEMINI_API_KEY;
+  const hasOpenAI = !!process.env.OPENAI_API_KEY;
   if (requested === 'builtin') return 'builtin';
   if (requested === 'gemini') return hasGemini ? 'gemini' : (hasOpenAI ? 'openai' : 'builtin');
   if (requested === 'openai') return hasOpenAI ? 'openai' : (hasGemini ? 'gemini' : 'builtin');
@@ -36,7 +40,16 @@ function getAvailableProvider() {
 
 async function callGemini({ question, subject = 'general', direct = false }) {
   try {
-    if (!process.env.GEMINI_API_KEY || !GoogleGenerativeAI) return null;
+    if (!process.env.GEMINI_API_KEY) return null;
+    // Lazy-load ESM module if require failed
+    if (!GoogleGenerativeAI) {
+      try {
+        ({ GoogleGenerativeAI } = await import('@google/generative-ai'));
+      } catch (impErr) {
+        console.error('[AI][Tutor] Failed to load @google/generative-ai via dynamic import:', impErr?.message || impErr);
+        return null;
+      }
+    }
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const modelId = process.env.GEMINI_MODEL || (direct ? 'gemini-1.5-flash' : 'gemini-1.5-pro');
     const model = genAI.getGenerativeModel({ model: modelId, systemInstruction: direct
