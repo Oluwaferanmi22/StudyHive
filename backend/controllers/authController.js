@@ -1,5 +1,15 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { sendOtp } = require('../services/emailService');
+let OAuth2Client = null;
+try {
+  ({ OAuth2Client } = require('google-auth-library'));
+} catch (e) {
+  OAuth2Client = null; // Optional dependency
+}
+
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClient = (googleClientId && OAuth2Client) ? new OAuth2Client(googleClientId) : null;
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -71,14 +81,27 @@ const register = async (req, res) => {
 
     // Award welcome badge
     user.addBadge('Welcome', 'Welcome to StudyHive!', '🎉');
+    
+    // Generate and send OTP for email verification
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    user.emailVerification = {
+      otpCode: code,
+      otpExpires: new Date(Date.now() + 10 * 60 * 1000)
+    };
     await user.save();
+    try {
+      await sendOtp(email, code);
+    } catch (e) {
+      // Do not fail registration if email send fails; client can request resend
+      console.warn('OTP email send failed:', e.message);
+    }
 
     // Generate token
     const token = generateToken(user._id);
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'User registered successfully. Please verify your email with the OTP sent to you.',
       token,
       user: {
         id: user._id,
@@ -116,6 +139,124 @@ const register = async (req, res) => {
       message: 'Server Error',
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
+  }
+};
+
+// @desc    Send OTP to email for verification (resend)
+// @route   POST /api/auth/otp/send
+// @access  Public
+const sendOtpHandler = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    user.emailVerification = {
+      otpCode: code,
+      otpExpires: new Date(Date.now() + 10 * 60 * 1000)
+    };
+    await user.save();
+    await sendOtp(email, code);
+    return res.status(200).json({ success: true, message: 'OTP sent' });
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    return res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    Verify OTP
+// @route   POST /api/auth/otp/verify
+// @access  Public
+const verifyOtpHandler = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ success: false, message: 'Email and code are required' });
+    }
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    const { emailVerification } = user;
+    if (!emailVerification || !emailVerification.otpCode || !emailVerification.otpExpires) {
+      return res.status(400).json({ success: false, message: 'No OTP requested' });
+    }
+    if (emailVerification.otpExpires < new Date()) {
+      return res.status(400).json({ success: false, message: 'OTP expired' });
+    }
+    if (String(emailVerification.otpCode) !== String(code)) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+    user.isEmailVerified = true;
+    user.emailVerification = { otpCode: null, otpExpires: null };
+    await user.save();
+    const token = generateToken(user._id);
+    return res.status(200).json({ success: true, message: 'Email verified', token });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    return res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @desc    Google login via ID token
+// @route   POST /api/auth/google
+// @access  Public
+const googleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ success: false, message: 'idToken is required' });
+    }
+    if (!googleClient) {
+      return res.status(500).json({ success: false, message: 'Google client not configured' });
+    }
+    const ticket = await googleClient.verifyIdToken({ idToken, audience: googleClientId });
+    const payload = ticket.getPayload();
+    const email = payload.email;
+    const googleId = payload.sub;
+    const emailVerified = payload.email_verified;
+
+    let user = await User.findOne({ $or: [ { email }, { 'oauth.googleId': googleId } ] });
+    if (!user) {
+      // Create new user with minimal profile
+      const usernameBase = email.split('@')[0];
+      const uniqueUsername = usernameBase + '_' + Math.random().toString(36).slice(2,8);
+      user = await User.create({
+        username: uniqueUsername,
+        email,
+        password: Math.random().toString(36),
+        oauth: { googleId },
+        isEmailVerified: emailVerified,
+        profile: { firstName: payload.given_name || 'User', lastName: payload.family_name || 'Google' },
+        preferences: {}
+      });
+      user.addBadge('Welcome', 'Welcome to StudyHive!', '🎉');
+      await user.save();
+    } else {
+      // Link googleId if not set
+      if (!user.oauth) user.oauth = {};
+      if (!user.oauth.googleId) user.oauth.googleId = googleId;
+      if (emailVerified && !user.isEmailVerified) user.isEmailVerified = true;
+      await user.save();
+    }
+
+    const token = generateToken(user._id);
+    return res.status(200).json({ success: true, message: 'Google login successful', token, user: {
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      profile: user.profile,
+      preferences: user.preferences,
+      gamification: user.gamification
+    }});
+  } catch (error) {
+    console.error('Google login error:', error);
+    return res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
 
@@ -164,6 +305,14 @@ const login = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
+      });
+    }
+
+    // Enforce email verification
+    if (!user.isEmailVerified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Email not verified. Please verify with the OTP sent to your email.'
       });
     }
 
@@ -478,5 +627,8 @@ module.exports = {
   deleteAccount,
   getUserStats,
   // Added: simple health endpoint for demos/monitoring
-  health
+  health,
+  sendOtp: sendOtpHandler,
+  verifyOtp: verifyOtpHandler,
+  googleLogin
 };

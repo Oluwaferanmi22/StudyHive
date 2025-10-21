@@ -92,7 +92,9 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 
+      bg-gradient-to-br from-primary-50 to-secondary-50 
+      dark:bg-gradient-to-b dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="text-center">
@@ -100,22 +102,22 @@ const Register = () => {
             <h2 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
               Join StudyHive
             </h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
               Create your account and start collaborative learning
             </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white dark:bg-gray-800 border border-transparent dark:border-gray-700 rounded-2xl shadow-xl p-8">
           {errors.general && (
-            <div className="mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg">
+            <div className="mb-4 p-4 text-sm text-red-700 bg-red-100 dark:text-red-200 dark:bg-red-900/30 rounded-lg">
               {errors.general}
             </div>
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Full Name
               </label>
               <input
@@ -126,15 +128,15 @@ const Register = () => {
                 value={formData.name}
                 onChange={handleChange}
                 className={`mt-1 block w-full px-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  errors.name ? 'border-red-300' : 'border-gray-300'
-                }`}
+                  errors.name ? 'border-red-300 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+                } dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400`}
                 placeholder="Enter your full name"
               />
               {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email address
               </label>
               <input
@@ -146,15 +148,15 @@ const Register = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className={`mt-1 block w-full px-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  errors.email ? 'border-red-300' : 'border-gray-300'
-                }`}
+                  errors.email ? 'border-red-300 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+                } dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400`}
                 placeholder="Enter your email"
               />
               {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Password
               </label>
               <input
@@ -166,15 +168,15 @@ const Register = () => {
                 value={formData.password}
                 onChange={handleChange}
                 className={`mt-1 block w-full px-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  errors.password ? 'border-red-300' : 'border-gray-300'
-                }`}
+                  errors.password ? 'border-red-300 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+                } dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400`}
                 placeholder="Create a password"
               />
               {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Confirm Password
               </label>
               <input
@@ -186,15 +188,15 @@ const Register = () => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 className={`mt-1 block w-full px-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                }`}
+                  errors.confirmPassword ? 'border-red-300 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+                } dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400`}
                 placeholder="Confirm your password"
               />
               {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
             </div>
 
             <div>
-              <label htmlFor="studyInterests" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="studyInterests" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Study Interests (Optional)
               </label>
               <input
@@ -203,7 +205,7 @@ const Register = () => {
                 type="text"
                 value={formData.studyInterests}
                 onChange={handleChange}
-                className="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="mt-1 block w-full px-3 py-3 border rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400"
                 placeholder="e.g., Mathematics, Computer Science, Biology"
               />
             </div>
@@ -215,9 +217,9 @@ const Register = () => {
                 type="checkbox"
                 checked={formData.agreeToTerms}
                 onChange={handleChange}
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded dark:border-gray-600"
               />
-              <label htmlFor="agreeToTerms" className="ml-2 block text-sm text-gray-700">
+              <label htmlFor="agreeToTerms" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
                 I agree to the{' '}
                 <Link to="/terms" className="text-primary-600 hover:text-primary-500">
                   Terms and Conditions

@@ -133,6 +133,28 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  emailVerification: {
+    otpCode: {
+      type: String,
+      default: null
+    },
+    otpExpires: {
+      type: Date,
+      default: null
+    }
+  },
+  oauth: {
+    googleId: {
+      type: String,
+      default: null,
+      index: true
+    },
+    facebookId: {
+      type: String,
+      default: null,
+      index: true
+    }
+  },
   isPremium: {
     type: Boolean,
     default: false
